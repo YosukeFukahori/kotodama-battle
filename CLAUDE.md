@@ -40,10 +40,12 @@
 python3 -m http.server 8000
 # → http://localhost:8000/
 
-# テスト
-node --test tests/
+# テスト（ブラウザ）：サーバー起動後に http://localhost:8000/tests/ を開く
+# テスト（Node 14 以上）
+node tests/run.js
 ```
 
+- テストは依存なしの自前ハーネス（`tests/harness.js`）。テストファイルを追加したら `tests/run.js` の import に追記する
 - 実装順序は `docs/PLAN.md` に従う
 - ロジックを追加・変更したらテストも追加・更新する
 - UI を変えたらスマホ幅（375px 程度）で表示を確認する
