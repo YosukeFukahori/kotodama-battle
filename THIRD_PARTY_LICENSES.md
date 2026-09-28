@@ -8,9 +8,9 @@
 - 版：20260723（small_lex / core_lex）
 - ライセンス：Apache License, Version 2.0
   - 全文：[licenses/sudachidict/LICENSE-2.0.txt](licenses/sudachidict/LICENSE-2.0.txt)
-  - 法的通知（UniDic・NEologd を含む）：[licenses/sudachidict/LEGAL](licenses/sudachidict/LEGAL)
+  - 法的通知（UniDic・NEologd を含む）：[licenses/sudachidict/LEGAL.txt](licenses/sudachidict/LEGAL.txt)
 
-SudachiDict には以下が含まれます（詳細は LEGAL を参照）。
+SudachiDict には以下が含まれます（詳細は LEGAL.txt を参照）。ゲーム内では `licenses.html` に同じ内容を表示しています。
 
 - UniDic（Copyright (c) 2011-2013, The UniDic Consortium. BSD 3-Clause License）
 - mecab-unidic-NEologd の一部（Copyright (C) 2015-2019 Toshinori Sato (@overlast). Apache License 2.0）

@@ -16,7 +16,7 @@ export const titleScreen = {
       h('p', { class: 'version' }, `Ver.${CONFIG.version}`,
         h('br'),
         '辞書データ：',
-        h('a', { href: 'THIRD_PARTY_LICENSES.md', target: '_blank', rel: 'noopener' }, 'SudachiDict（Apache License 2.0）'),
+        h('a', { href: 'licenses.html' }, 'SudachiDict（Apache License 2.0）'),
       ),
     );
   },

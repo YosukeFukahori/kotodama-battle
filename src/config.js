@@ -1,5 +1,5 @@
 // ゲームバランスや動作に関わる定数はすべてここに集約する。
-// 値はすべて仮。バランス確認で調整する（docs/SPEC.md 参照）。
+// 値の根拠は docs/SPEC.md、調整はシミュレーター（tools/sim/）で確認する。
 
 export const CONFIG = Object.freeze({
   version: '0.1.0',

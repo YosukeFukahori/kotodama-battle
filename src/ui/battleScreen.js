@@ -450,7 +450,6 @@ export const battleScreen = {
         goToResult();
         return;
       }
-      // eslint-disable-next-line no-alert
       if (!window.confirm('バトルをやめると負けになります。やめますか？')) return;
       clearTimers();
       // 出題中・判定中なら、その問題で決着したことにする

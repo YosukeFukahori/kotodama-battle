@@ -120,3 +120,15 @@ test('データ整合性：どのお題にも公式辞書に答えが20語以上
     assert.ok(n >= 20, `${p.first}→${p.last} の答えが公式辞書に ${n} 語しかない`);
   }
 });
+
+test('データ整合性：公式辞書の代表表記は出題用プールの表記と一致する（プール変更後は辞書を再生成すること）', async () => {
+  const pool = (await loadJson(POOL)).entries;
+  for (const raw of pool) {
+    const [reading, surface = reading] = raw;
+    const { data } = await officialChunk(firstChar(reading), lastChar(reading));
+    const hit = data.entries.find(([r]) => r === reading);
+    if (!hit) continue; // 追加辞書の語
+    const officialSurface = hit[1] ?? hit[0];
+    assert.equal(officialSurface, surface, `${reading}：公式辞書「${officialSurface}」とプール「${surface}」が違う。python3 tools/build_dictionary.py で再生成する`);
+  }
+});

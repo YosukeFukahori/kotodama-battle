@@ -5,6 +5,10 @@
 
 仲間内で遊ぶための試作版（Ver.0.1）。ブラウザだけで動き、スマホでも遊べます。
 
+**▶ 遊ぶ：https://yosukefukahori.github.io/kotodama-battle/**
+
+スマホで遊んで気づいたことは [docs/MOBILE_CHECKLIST.md](docs/MOBILE_CHECKLIST.md) の項目を参考に教えてください。
+
 ## 遊び方
 
 1. タイトルで「バトル」を選び、CPUの難易度を選ぶ
@@ -39,7 +43,7 @@
 
 詳しい仕様は [docs/SPEC.md](docs/SPEC.md)、開発計画は [docs/PLAN.md](docs/PLAN.md) を参照してください。
 
-## ローカルで動かす
+## 起動方法（ローカル）
 
 ES Modules を使っているため、`index.html` を直接開くのではなくローカルサーバー経由で開きます。
 
@@ -80,9 +84,14 @@ tests/           テスト
 docs/            仕様書・開発計画
 ```
 
-## 辞書
+## 使用辞書
 
-正誤判定には [SudachiDict](https://github.com/WorksApplications/SudachiDict)（Apache License 2.0）から生成した公式辞書（約26.7万語）と、ゲーム独自の追加辞書（`data/extra-words.json`）を使います。ライセンスは [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) を参照してください。
+正誤判定には次の2つを使います。
+
+- 公式辞書：[SudachiDict](https://github.com/WorksApplications/SudachiDict)（Works Applications、版 20260723、small + core）から生成（約26.4万語、`data/official/`）
+- 追加辞書：公式辞書にない言葉をゲーム側で補うリスト（`data/extra-words.json`）
+
+出題とCPUの回答には、別に用意した日常語のリスト（`data/prompt-pool.json`、1,025語）を使います。
 
 公式辞書を作り直すとき：
 
@@ -90,7 +99,12 @@ docs/            仕様書・開発計画
 python3 tools/build_dictionary.py --download
 ```
 
-（元データ約37MBを `.cache/sudachi/` に取得してから `data/official/` を生成します。2回目以降は `--download` なしで可）
+（元データ約37MBを `.cache/sudachi/` に取得してから `data/official/` を生成します。2回目以降は `--download` なしで可。`data/prompt-pool.json` を変えたときも再生成してください）
+
+## ライセンス
+
+- 公式辞書のデータ：SudachiDict（Apache License 2.0。UniDic・NEologd の一部を含む）。詳細は [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) と [licenses/sudachidict/](licenses/sudachidict/)。ゲーム内ではタイトル画面のクレジットから [licenses.html](licenses.html) を開けます
+- ゲーム本体のコード：ライセンスは指定していません（All rights reserved）
 
 ## バランス調整
 

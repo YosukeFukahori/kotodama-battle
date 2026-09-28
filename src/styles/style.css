@@ -462,10 +462,6 @@ h1:focus, h2:focus {
   gap: 12px;
 }
 
-.panel--muted {
-  background: var(--surface-muted);
-}
-
 .panel__title {
   font-size: 1.0625rem;
 }
@@ -503,7 +499,7 @@ h1:focus, h2:focus {
   }
 }
 
-/* ---------- バトル進行（実装順序4） ---------- */
+/* ---------- バトル進行 ---------- */
 
 [hidden] {
   display: none !important;
@@ -702,7 +698,7 @@ h1:focus, h2:focus {
   font-size: 1rem;
 }
 
-/* ---------- 戦績・通知（実装順序5） ---------- */
+/* ---------- 戦績・通知 ---------- */
 
 .notice {
   padding: 12px 14px;
@@ -780,7 +776,7 @@ h1:focus, h2:focus {
   font-variant-numeric: tabular-nums;
 }
 
-/* ---------- バトル画面の縦方向の詰め（実装順序7） ----------
+/* ---------- バトル画面の縦方向の詰め ----------
    小さいスマホ（iPhone SE 等）でソフトキーボードを出しても、
    お題・残り時間・入力欄がキーボードの上に収まるよう、入力欄までの高さを抑える */
 
@@ -807,4 +803,23 @@ h1:focus, h2:focus {
 
 .screen--battle .answer-area {
   gap: 8px;
+}
+
+/* ---------- ライセンスページ ---------- */
+
+.license-list {
+  padding-left: 1.2em;
+  list-style: disc;
+  font-size: 0.9375rem;
+}
+
+.panel a {
+  color: var(--player);
+  word-break: break-all;
+}
+
+.license-back {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
 }
