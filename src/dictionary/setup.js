@@ -1,13 +1,13 @@
 // ブラウザ用の組み立て。辞書データの場所と取得方法はここだけで決める。
-// 実装順序6で公式辞書を分割ファイルに切り替えるときは、公式辞書の loadChunk だけを差し替える。
 
 import { CONFIG } from '../config.js';
-import { OfficialDictionary, createSeedChunkLoader } from './officialDictionary.js';
+import { OfficialDictionary, chunkFileName } from './officialDictionary.js';
 import { ExtraDictionary } from './extraDictionary.js';
 import { WordValidator } from './wordValidator.js';
 import { PromptPool } from '../core/prompt.js';
 
 const DATA_DIR = new URL('../../data/', import.meta.url);
+const OFFICIAL_DIR = new URL('official/', DATA_DIR);
 
 async function fetchJson(url) {
   const res = await fetch(url);
@@ -18,7 +18,8 @@ async function fetchJson(url) {
 /** 正誤判定用の辞書（公式辞書 → 追加辞書）と判定器を作る。 */
 export function createDictionaries({ loadJson = fetchJson } = {}) {
   const official = new OfficialDictionary({
-    loadChunk: createSeedChunkLoader(() => loadJson(new URL('official-seed.json', DATA_DIR))),
+    loadIndex: () => loadJson(new URL('index.json', OFFICIAL_DIR)),
+    loadChunk: (first, last) => loadJson(new URL(chunkFileName(first, last), OFFICIAL_DIR)).then((d) => d.entries),
   });
   const extra = new ExtraDictionary({
     load: () => loadJson(new URL('extra-words.json', DATA_DIR)),

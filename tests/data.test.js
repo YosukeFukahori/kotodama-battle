@@ -1,12 +1,13 @@
-// 辞書・プールのデータファイルの整合性チェック。データを編集したら必ず通すこと。
+// 辞書・プールのデータファイルの整合性チェック。データを編集・再生成したら必ず通すこと。
 
 import { test, assert } from './harness.js';
 import { loadJson } from './loadJson.js';
-import { normalizeReading, isReading, readingLength } from '../src/core/kana.js';
+import { normalizeReading, isReading, readingLength, firstChar, lastChar } from '../src/core/kana.js';
 import { PromptPool } from '../src/core/prompt.js';
+import { chunkFileName } from '../src/dictionary/officialDictionary.js';
 import { CONFIG } from '../src/config.js';
 
-const OFFICIAL = 'data/official-seed.json';
+const INDEX = 'data/official/index.json';
 const EXTRA = 'data/extra-words.json';
 const POOL = 'data/prompt-pool.json';
 
@@ -30,26 +31,76 @@ function checkEntries(path, data) {
   return seen;
 }
 
-for (const path of [OFFICIAL, EXTRA, POOL]) {
+const chunkCache = new Map();
+async function officialChunk(first, last) {
+  const key = `${first}|${last}`;
+  if (!chunkCache.has(key)) {
+    const index = await loadJson(INDEX);
+    const count = index.counts?.[first]?.[last] ?? 0;
+    const data = count > 0 ? await loadJson(`data/official/${chunkFileName(first, last)}`) : { first, last, entries: [] };
+    chunkCache.set(key, { count, data });
+  }
+  return chunkCache.get(key);
+}
+
+async function inOfficial(reading) {
+  const { data } = await officialChunk(firstChar(reading), lastChar(reading));
+  return data.entries.some(([r]) => r === reading);
+}
+
+test('データ整合性：公式辞書の目次（出典・ライセンス・語数）', async () => {
+  const index = await loadJson(INDEX);
+  assert.equal(index.source.name, 'SudachiDict');
+  assert.equal(index.source.license, 'Apache-2.0');
+  let sum = 0;
+  for (const [first, lasts] of Object.entries(index.counts)) {
+    assert.ok(isReading(first) && first.length === 1, `目次の最初の文字が不正：${first}`);
+    for (const [last, n] of Object.entries(lasts)) {
+      assert.ok(isReading(last) && last.length === 1, `目次の最後の文字が不正：${last}`);
+      assert.ok(Number.isInteger(n) && n > 0, `目次の語数が不正：${first}→${last}`);
+      sum += n;
+    }
+  }
+  assert.equal(sum, index.total, '目次の語数の合計が total と一致しない');
+  assert.ok(index.total >= 100000, `公式辞書の語数が少なすぎる（${index.total}）`);
+  assert.ok(index.maxReadingLength < 130, `読みが130文字以上の語がある（最長 ${index.maxReadingLength} 文字）`);
+});
+
+test('データ整合性：公式辞書のファイル（出題用プールのお題の分）', async () => {
+  const pool = (await loadJson(POOL)).entries;
+  const pairs = new Set(pool.map(([r]) => `${firstChar(r)}|${lastChar(r)}`));
+  for (const key of pairs) {
+    const [first, last] = key.split('|');
+    const { count, data } = await officialChunk(first, last);
+    if (count === 0) continue;
+    const path = chunkFileName(first, last);
+    checkEntries(path, data);
+    assert.equal(data.entries.length, count, `${path} の語数が目次と一致しない`);
+    for (const [r] of data.entries) {
+      assert.ok(firstChar(r) === first && lastChar(r) === last, `${path} に別のお題の単語がある：${r}`);
+      assert.ok(readingLength(r) < 130, `${path} に読みが130文字以上の語がある：${r}`);
+    }
+  }
+});
+
+for (const path of [EXTRA, POOL]) {
   test(`データ整合性：${path}`, async () => {
     checkEntries(path, await loadJson(path));
   });
 }
 
 test('データ整合性：追加辞書は公式辞書と重複しない', async () => {
-  const official = checkEntries(OFFICIAL, await loadJson(OFFICIAL));
   const extra = checkEntries(EXTRA, await loadJson(EXTRA));
   for (const reading of extra) {
-    assert.ok(!official.has(reading), `${reading} は公式辞書にもある（追加辞書から削除すること）`);
+    assert.ok(!(await inOfficial(reading)), `${reading} は公式辞書にもある（追加辞書から削除すること）`);
   }
 });
 
 test('データ整合性：出題用プールの単語はすべて公式辞書か追加辞書にある', async () => {
-  const official = checkEntries(OFFICIAL, await loadJson(OFFICIAL));
   const extra = checkEntries(EXTRA, await loadJson(EXTRA));
   const pool = checkEntries(POOL, await loadJson(POOL));
   for (const reading of pool) {
-    assert.ok(official.has(reading) || extra.has(reading), `${reading} が辞書にない（CPU の回答が無効になる）`);
+    assert.ok(extra.has(reading) || (await inOfficial(reading)), `${reading} が辞書にない（CPU の回答が無効になる）`);
   }
 });
 

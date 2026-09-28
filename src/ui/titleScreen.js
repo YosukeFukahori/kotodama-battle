@@ -13,7 +13,11 @@ export const titleScreen = {
         button('バトル', () => navigate('select')),
         button('戦績', () => navigate('record'), { variant: 'secondary' }),
       ),
-      h('p', { class: 'version' }, `Ver.${CONFIG.version}`),
+      h('p', { class: 'version' }, `Ver.${CONFIG.version}`,
+        h('br'),
+        '辞書データ：',
+        h('a', { href: 'THIRD_PARTY_LICENSES.md', target: '_blank', rel: 'noopener' }, 'SudachiDict（Apache License 2.0）'),
+      ),
     );
   },
 };

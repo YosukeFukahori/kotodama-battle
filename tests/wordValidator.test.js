@@ -1,6 +1,6 @@
 import { test, assert } from './harness.js';
 import { WordValidator, REJECT_REASON, rejectMessage } from '../src/dictionary/wordValidator.js';
-import { OfficialDictionary } from '../src/dictionary/officialDictionary.js';
+import { memoryOfficial } from './fakes.js';
 import { ExtraDictionary } from '../src/dictionary/extraDictionary.js';
 
 const OFFICIAL = [
@@ -17,7 +17,7 @@ const EXTRA = [['ありあなぐらんで', 'アリアナグランデ']];
 function createValidator({ minLength = 2, officialLookup, extraLookup } = {}) {
   const official = officialLookup
     ? { lookup: officialLookup }
-    : new OfficialDictionary({ loadChunk: async (first) => OFFICIAL.filter(([r]) => r.startsWith(first)) });
+    : memoryOfficial(OFFICIAL);
   const extra = extraLookup
     ? { lookup: extraLookup }
     : new ExtraDictionary({ load: async () => ({ entries: EXTRA }) });

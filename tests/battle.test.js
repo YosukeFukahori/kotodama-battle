@@ -3,7 +3,7 @@ import { createBattle, resolveRound, forfeit } from '../src/core/battle.js';
 
 const LIMIT = 15000;
 // ダメージ = 10 × 長さ補正 × 時間補正。length 2・timeMs 7500 なら 10 × 1 × 1 = 10
-const PARAMS = { base: 10, minLength: 2, lengthCoef: 0.15, maxTimeMul: 1.5, minTimeMul: 0.5 };
+const PARAMS = { base: 10, minLength: 2, lengthCoef: 0.15, maxDamageLength: 20, maxTimeMul: 1.5, minTimeMul: 0.5 };
 const opts = { timeLimitMs: LIMIT, damageParams: PARAMS };
 
 const valid = (timeMs, length = 2) => ({ status: 'answered', valid: true, timeMs, length });
@@ -150,4 +150,14 @@ test('決着後は resolveRound できない', () => {
 test('やめた側の負けになる（forfeit）', () => {
   const state = forfeit(battleWith(), 'player');
   assert.deepEqual(state.result, { outcome: 'opponent', reason: 'forfeit' });
+});
+
+test('攻撃には実際の文字数とダメージ計算用文字数を別々に記録する', () => {
+  const r = resolveRound(battleWith(), { player: valid(7500, 35), opponent: valid(9000, 8) }, opts);
+  const [p, o] = r.attacks;
+  assert.equal(p.length, 35);
+  assert.equal(p.damageLength, 20);
+  assert.equal(p.damage, 37, '35文字でも20文字分で計算');
+  assert.equal(o.length, 8);
+  assert.equal(o.damageLength, 8);
 });

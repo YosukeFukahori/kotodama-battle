@@ -21,6 +21,7 @@
 - 回答時間がまったく同じなら同時攻撃
 - 3問連続でどちらも攻撃できなければ引き分け
 - 同じ言葉は何度使ってもよい
+- 使える言葉：名詞（地名・有名人のフルネームなど固有名詞を含む）と、動詞・形容詞の基本形（「たべる」「うつくしい」）
 - 濁点・半濁点は区別する（「て」と「で」は別）。末尾の「ー」は「ー」として扱う
 - 長音は「ー」で入力する（「〜」や「-」を使った回答は無効）
 - バトル開始（「スタート」）後に「やめる」・リロード・ブラウザを閉じるなどで離脱した場合は負け（次回起動時に1回だけ記録）。説明画面までの離脱は記録されない
@@ -70,11 +71,24 @@ src/
   storage/       localStorage への保存
   ui/            各画面
   styles/        CSS
-data/            辞書データ
-tools/           辞書データ生成スクリプト
+data/            辞書データ（official/ は生成物）
+tools/           開発用サーバー・辞書生成スクリプト
+licenses/        同梱データのライセンス
 tests/           テスト
 docs/            仕様書・開発計画
 ```
+
+## 辞書
+
+正誤判定には [SudachiDict](https://github.com/WorksApplications/SudachiDict)（Apache License 2.0）から生成した公式辞書（約26.7万語）と、ゲーム独自の追加辞書（`data/extra-words.json`）を使います。ライセンスは [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) を参照してください。
+
+公式辞書を作り直すとき：
+
+```bash
+python3 tools/build_dictionary.py --download
+```
+
+（元データ約37MBを `.cache/sudachi/` に取得してから `data/official/` を生成します。2回目以降は `--download` なしで可）
 
 ## 技術
 

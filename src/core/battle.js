@@ -4,7 +4,7 @@
 // 状態は変更せず、毎回新しい状態を返す。
 
 import { CONFIG } from '../config.js';
-import { calcDamage } from './damage.js';
+import { calcDamage, damageLength } from './damage.js';
 
 export const SIDES = Object.freeze(['player', 'opponent']);
 
@@ -44,7 +44,8 @@ function isValid(answer) {
  * @returns {{
  *   state: object,
  *   order: 'none' | 'single' | 'sequential' | 'simultaneous',
- *   attacks: Array<{ attacker: string, target: string, damage: number, hpAfter: number }>,
+ *   attacks: Array<{ attacker: string, target: string, damage: number, hpAfter: number,
+ *                    length: number, damageLength: number }>,
  *   skipped: string | null,   // 先攻の攻撃で決着したため攻撃しなかった側
  * }}
  */
@@ -61,7 +62,8 @@ export function resolveRound(state, answers, { timeLimitMs, damageParams = CONFI
     const { length, timeMs } = answers[attacker];
     const damage = calcDamage({ length, timeMs, timeLimitMs }, damageParams);
     hp[target] = Math.max(0, hp[target] - damage);
-    attacks.push({ attacker, target, damage, hpAfter: hp[target] });
+    // length：実際の文字数、damageLength：ダメージ計算に使った文字数（上限あり）
+    attacks.push({ attacker, target, damage, hpAfter: hp[target], length, damageLength: damageLength(length, damageParams) });
   };
 
   const validSides = SIDES.filter((side) => isValid(answers[side]));

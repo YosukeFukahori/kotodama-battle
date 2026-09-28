@@ -230,6 +230,10 @@ h1:focus, h2:focus {
   color: var(--text-muted);
 }
 
+.version a {
+  color: inherit;
+}
+
 /* ---------- CPU選択 ---------- */
 
 .cpu-list {

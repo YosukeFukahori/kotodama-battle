@@ -11,10 +11,9 @@ kotodama-battle/
 ├── docs/            SPEC.md, PLAN.md
 ├── tools/
 │   ├── serve.py                              # 開発用サーバー（キャッシュ無効）
-│   └── build-dictionary.mjs                  # 元辞書 → data/official/*.json（手元で実行・実装順序6）
+│   └── build_dictionary.py                   # SudachiDict → data/official/（手元で実行）
 ├── data/
-│   ├── official-seed.json                    # 仮の公式辞書（手作り約400語。実装順序6で置き換え）
-│   ├── official/                             # 最初の文字ごとの JSON（生成物・実装順序6）
+│   ├── official/                             # 公式辞書（生成物）：index.json と「最初×最後」ごとの JSON
 │   ├── extra-words.json                      # ゲーム独自の追加辞書
 │   └── prompt-pool.json                      # 出題・CPU回答用の一般語（仮データは公式仮辞書と同じ日常語）
 ├── src/
@@ -40,7 +39,7 @@ kotodama-battle/
 | 3 | 仮辞書（数百語）＋判定レイヤー | 判定がロジック単体で動く | 完了 |
 | 4 | 出題・ダメージ・判定タイム方式のバトル進行・CPU 3難易度 | 遊べる | 完了 |
 | 5 | CPU戦績の保存（`storage.js`）・戦績画面・離脱時の敗北記録（`activeMatch`） | 勝敗が残る | 完了 |
-| 6 | 本番の公式辞書を生成し、分割して読み込む | 実用的な辞書 | |
+| 6 | 本番の公式辞書を生成し、分割して読み込む | 実用的な辞書 | 完了 |
 | 7 | CPU 3難易度・バランス調整・スマホ実機確認 | 仲間内テスト可 | |
 | 8 | GitHub Pages 公開・README・ライセンス表記 | Ver.0.1 リリース | |
 
@@ -66,6 +65,8 @@ python3 tools/serve.py
 - 3問連続でどちらからも有効な攻撃がなければ引き分け（`record.cpu.draws` +1）
 - CPU戦績（勝ち・負け・引き分け）と直近30試合を保存。勝率＝勝ち÷全試合（引き分け含む）
 - localStorage が使えない環境ではメモリ上で続行（ページを閉じるまで保持）
+- 公式辞書：SudachiDict small+core。名詞＋動詞・形容詞の基本形。人名はフルネームのみ。住所状の地名・英字だけの語・読み130文字以上の語は除外
+- ダメージ計算に使う文字数は最大20文字（`damage.maxDamageLength`）。実際の文字数（表示・有効性）とは分けて扱う
 - バトル開始後の「やめる」は敗北扱い
 - リロード・途中離脱も敗北扱い。`activeMatch` の目印で将来の対人戦と同じ考え方に揃える（SPEC §3.5）
 - CPU戦ではレーティングは一切変動しない
@@ -75,4 +76,5 @@ python3 tools/serve.py
 
 ## 未確定事項
 
-1. 公式辞書の元データ（SudachiDict 想定）と固有名詞のカバー範囲
+1. 公式辞書にない言葉の追加（`data/extra-words.json` に随時追記）
+2. 同音異義語の代表表記（出題用プールにない言葉は機械的に選ぶため、珍しい漢字になることがある）

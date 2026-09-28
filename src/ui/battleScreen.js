@@ -20,6 +20,14 @@ function formatSec(ms) {
   return `${(ms / 1000).toFixed(2)}秒`;
 }
 
+/** 実際の文字数。ダメージ計算用文字数が上限で頭打ちになった場合は両方を示す。 */
+function lengthText(judged, attack) {
+  if (attack && attack.damageLength < judged.length) {
+    return `${judged.length}文字（ダメージ計算は${attack.damageLength}文字）`;
+  }
+  return `${judged.length}文字`;
+}
+
 export const battleScreen = {
   render({ navigate, params }) {
     const cpu = findCpu(params.cpuId);
@@ -271,7 +279,7 @@ export const battleScreen = {
       if (disposed) return;
       const prompt = pool?.next({ avoid: lastPrompt });
       // 判定タイムで辞書の読み込み失敗が起きないよう、回答受付の前に必要なデータを読み込んでおく
-      const ready = prompt && await data.official.preload(prompt.first).then(() => true, () => false);
+      const ready = prompt && await data.official.preload(prompt).then(() => true, () => false);
       if (disposed) return;
       if (!ready) {
         promptBox.replaceChildren(
@@ -388,7 +396,7 @@ export const battleScreen = {
           ),
           j.status === 'answered' && h('p', { class: 'judge-card__word' }, j.surface || '（空）'),
           j.status === 'answered' && h('p', { class: 'judge-card__meta' },
-            `${j.reading ? `${j.reading}・` : ''}${j.length}文字・${formatSec(j.timeMs)}`),
+            `${j.reading ? `${j.reading}・` : ''}${lengthText(j, attack)}・${formatSec(j.timeMs)}`),
           detail,
         );
       };

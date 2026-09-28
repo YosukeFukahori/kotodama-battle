@@ -1,33 +1,69 @@
-// 公式辞書（ライセンス上問題のない既存日本語辞書）。読み取り専用。正誤判定に使う。
+// 公式辞書（SudachiDict から生成。tools/build_dictionary.py）。読み取り専用。正誤判定に使う。
 // ※出題と CPU 回答には使わない（それは prompt-pool の役割。CLAUDE.md 参照）。
 //
-// データは「最初の文字」単位のチャンクで読み込む。出題時点で最初の文字が分かるので、
-// 必要なチャンクだけを読めばよい（スマホでの初回読み込みを軽くするため）。
-// チャンクの取得方法は loadChunk として外から注入する：
-//   - Ver.0.1 仮辞書：1ファイルを読み込んで最初の文字で振り分ける（createSeedChunkLoader）
-//   - 実装順序6：最初の文字ごとの JSON ファイルを読む
+// データは「最初の文字 × 最後の文字」ごとのファイルに分かれている。
+// 判定ではお題の条件（最初・最後の文字）を通った読みしか辞書を引かないので、
+// 1問につき1ファイル（中央値 0.5KB・最大 100KB 程度）だけ読めばよい。
+// 目次（index.json）で、単語がある組み合わせかどうかを先に確認する（ない組み合わせは読みに行かない）。
+//
+// 取得方法は外から注入する：
+//   loadIndex()              → { counts: { 最初の文字: { 最後の文字: 語数 } } }
+//   loadChunk(first, last)   → [[読み, 表記?], ...]
 
-import { firstChar } from '../core/kana.js';
+import { firstChar, lastChar } from '../core/kana.js';
 import { toEntryMap } from './wordEntry.js';
 
-export class OfficialDictionary {
-  #loadChunk;
-  #chunks = new Map(); // 最初の文字 → Promise<Map<読み, 単語>>
+const hex = (ch) => ch.codePointAt(0).toString(16).toUpperCase().padStart(4, '0');
 
-  /** @param {{ loadChunk: (firstChar: string) => Promise<Array<[string, string?]>> }} options */
-  constructor({ loadChunk }) {
+/** 組み合わせごとのファイル名。tools/build_dictionary.py の chunk_filename と同じ規則。 */
+export function chunkFileName(first, last) {
+  return `${hex(first)}-${hex(last)}.json`;
+}
+
+export class OfficialDictionary {
+  #loadIndex;
+  #loadChunk;
+  #index = null;          // Promise<{ counts }>
+  #chunks = new Map();    // "最初|最後" → Promise<Map<読み, 単語>>
+
+  /**
+   * @param {{
+   *   loadIndex: () => Promise<{ counts: Record<string, Record<string, number>> }>,
+   *   loadChunk: (first: string, last: string) => Promise<Array<[string, string?]>>,
+   * }} options
+   */
+  constructor({ loadIndex, loadChunk }) {
+    this.#loadIndex = loadIndex;
     this.#loadChunk = loadChunk;
   }
 
-  /** 指定した最初の文字のチャンクを読み込む。失敗した場合は次回また読み込みを試みる。 */
-  preload(first) {
-    let chunk = this.#chunks.get(first);
+  #getIndex() {
+    if (!this.#index) {
+      this.#index = Promise.resolve().then(() => this.#loadIndex());
+      this.#index.catch(() => { this.#index = null; });
+    }
+    return this.#index;
+  }
+
+  /** お題の組み合わせの語数（目次による）。 */
+  async count({ first, last }) {
+    const index = await this.#getIndex();
+    return index.counts?.[first]?.[last] ?? 0;
+  }
+
+  /**
+   * お題の組み合わせのデータを読み込む。読み込みに失敗した場合は次回また読み込みを試みる。
+   * 回答受付の前に呼んでおくと、判定タイムでの読み込み失敗を防げる。
+   */
+  preload({ first, last }) {
+    const key = `${first}|${last}`;
+    let chunk = this.#chunks.get(key);
     if (!chunk) {
-      chunk = Promise.resolve()
-        .then(() => this.#loadChunk(first))
+      chunk = this.count({ first, last })
+        .then((n) => (n > 0 ? this.#loadChunk(first, last) : []))
         .then((raw) => toEntryMap(raw ?? []));
-      chunk.catch(() => this.#chunks.delete(first));
-      this.#chunks.set(first, chunk);
+      chunk.catch(() => this.#chunks.delete(key));
+      this.#chunks.set(key, chunk);
     }
     return chunk;
   }
@@ -36,31 +72,7 @@ export class OfficialDictionary {
   async lookup(reading) {
     const first = firstChar(reading);
     if (!first) return null;
-    const chunk = await this.preload(first);
+    const chunk = await this.preload({ first, last: lastChar(reading) });
     return chunk.get(reading) ?? null;
   }
-}
-
-/**
- * 1つの JSON（{ entries: [...] }）を読み込み、最初の文字ごとに振り分けるローダー。
- * 仮辞書用。読み込みは初回の1回だけ。
- * @param {() => Promise<{ entries: Array<[string, string?]> }>} loadAll
- */
-export function createSeedChunkLoader(loadAll) {
-  let grouped = null; // Promise<Map<最初の文字, 生データ[]>>
-  return async (first) => {
-    if (!grouped) {
-      grouped = Promise.resolve().then(loadAll).then((data) => {
-        const map = new Map();
-        for (const raw of data.entries) {
-          const key = firstChar(raw[0]);
-          if (!map.has(key)) map.set(key, []);
-          map.get(key).push(raw);
-        }
-        return map;
-      });
-      grouped.catch(() => { grouped = null; });
-    }
-    return (await grouped).get(first) ?? [];
-  };
 }

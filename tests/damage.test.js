@@ -1,7 +1,8 @@
 import { test, assert } from './harness.js';
-import { calcDamage, lengthMultiplier, timeMultiplier } from '../src/core/damage.js';
+import { calcDamage, damageLength, lengthMultiplier, timeMultiplier } from '../src/core/damage.js';
+import { CONFIG } from '../src/config.js';
 
-const PARAMS = { base: 10, minLength: 2, lengthCoef: 0.15, maxTimeMul: 1.5, minTimeMul: 0.5 };
+const PARAMS = { base: 10, minLength: 2, lengthCoef: 0.15, maxDamageLength: 20, maxTimeMul: 1.5, minTimeMul: 0.5 };
 const LIMIT = 15000;
 
 test('長さ補正：最小文字数で1、1文字増えるごとに +0.15', () => {
@@ -35,4 +36,36 @@ test('ダメージ：長いほど・速いほど大きい', () => {
 test('ダメージは最低1', () => {
   const tiny = { ...PARAMS, base: 0.1 };
   assert.equal(calcDamage({ length: 2, timeMs: LIMIT, timeLimitMs: LIMIT }, tiny), 1);
+});
+
+// ---------- ダメージ計算用文字数の上限（MAX_DAMAGE_LENGTH） ----------
+
+test('config の MAX_DAMAGE_LENGTH は20', () => {
+  assert.equal(CONFIG.damage.maxDamageLength, 20);
+});
+
+test('ダメージ計算用文字数：20文字までは実際の文字数、超えたら20', () => {
+  assert.equal(damageLength(8, PARAMS), 8);
+  assert.equal(damageLength(15, PARAMS), 15);
+  assert.equal(damageLength(20, PARAMS), 20);
+  assert.equal(damageLength(25, PARAMS), 20);
+  assert.equal(damageLength(50, PARAMS), 20);
+});
+
+test('20文字を超えるとダメージは20文字のときと同じ', () => {
+  const at = (length) => calcDamage({ length, timeMs: 7500, timeLimitMs: LIMIT }, PARAMS);
+  assert.equal(at(20), 37); // 10 × (1 + 18 × 0.15) × 1.0 = 37
+  assert.equal(at(25), at(20));
+  assert.equal(at(50), at(20));
+  assert.equal(at(129), at(20));
+  assert.ok(at(19) < at(20), '20文字までは長いほど大きい');
+});
+
+test('上限は config で変更できる', () => {
+  const p10 = { ...PARAMS, maxDamageLength: 10 };
+  assert.equal(damageLength(15, p10), 10);
+  assert.equal(
+    calcDamage({ length: 15, timeMs: 7500, timeLimitMs: LIMIT }, p10),
+    calcDamage({ length: 10, timeMs: 7500, timeLimitMs: LIMIT }, p10),
+  );
 });

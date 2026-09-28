@@ -18,9 +18,12 @@ export const CONFIG = Object.freeze({
 
   damage: Object.freeze({
     base: 10,
-    // 長さ補正 = 1 + (読みの文字数 - minLength) × lengthCoef
+    // 長さ補正 = 1 + (ダメージ計算用文字数 - minLength) × lengthCoef
     minLength: 2,
     lengthCoef: 0.15,
+    // MAX_DAMAGE_LENGTH：ダメージ計算に使う文字数の上限。
+    // これより長い言葉も回答としては有効（表示も実際の文字数）。ダメージだけこの文字数で計算する
+    maxDamageLength: 20,
     // 時間補正 = maxTimeMul - (回答時間 / 制限時間) × (maxTimeMul - minTimeMul)
     maxTimeMul: 1.5,
     minTimeMul: 0.5,
