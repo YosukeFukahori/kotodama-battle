@@ -42,7 +42,7 @@ kotodama-battle/
 | 5 | CPU戦績の保存（`storage.js`）・戦績画面・離脱時の敗北記録（`activeMatch`） | 勝敗が残る | 完了 |
 | 6 | 本番の公式辞書を生成し、分割して読み込む | 実用的な辞書 | 完了 |
 | 7 | CPU 3難易度・バランス調整・スマホ実機確認 | 仲間内テスト可 | 実機確認以外は完了 |
-| 8 | GitHub Pages 公開・README・ライセンス表記 | Ver.0.1 リリース | |
+| 8 | GitHub Pages 公開・README・ライセンス表記 | Ver.0.1 リリース | 完了（https://yosukefukahori.github.io/kotodama-battle/）|
 
 ## ローカルでの確認方法
 
