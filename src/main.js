@@ -4,7 +4,9 @@ import { battleScreen } from './ui/battleScreen.js';
 import { resultScreen } from './ui/resultScreen.js';
 import { recordScreen } from './ui/recordScreen.js';
 
-// 各画面は { render({ navigate, params }) => HTMLElement, dispose?() } を持つ。
+// 各画面は render({ navigate, params }) を持ち、次のどちらかを返す：
+//   - HTMLElement
+//   - { el: HTMLElement, dispose() }   … タイマー等の後始末が必要な画面
 // navigate を引数で渡すことで、画面モジュールから main.js への循環 import を避ける。
 const screens = {
   title: titleScreen,
@@ -15,16 +17,19 @@ const screens = {
 };
 
 const app = document.getElementById('app');
-let current = null;
+let disposeCurrent = null;
 
 function navigate(name, params = {}) {
   const screen = screens[name];
   if (!screen) throw new Error(`Unknown screen: ${name}`);
 
-  current?.dispose?.();
-  current = screen;
+  disposeCurrent?.();
+  disposeCurrent = null;
 
-  const view = screen.render({ navigate, params });
+  const rendered = screen.render({ navigate, params });
+  const view = rendered instanceof Node ? rendered : rendered.el;
+  if (!(rendered instanceof Node)) disposeCurrent = rendered.dispose ?? null;
+
   view.dataset.screen = name;
   app.replaceChildren(view);
   window.scrollTo(0, 0);

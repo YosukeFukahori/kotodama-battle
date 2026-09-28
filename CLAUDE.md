@@ -36,8 +36,8 @@
 ## 開発手順
 
 ```bash
-# ローカルで起動（ES Modules は file:// では動かない）
-python3 -m http.server 8000
+# ローカルで起動（ES Modules は file:// では動かない。キャッシュ無効の開発サーバー）
+python3 tools/serve.py
 # → http://localhost:8000/
 
 # テスト（ブラウザ）：サーバー起動後に http://localhost:8000/tests/ を開く

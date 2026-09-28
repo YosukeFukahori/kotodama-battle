@@ -6,6 +6,15 @@ import { runAll } from './harness.js';
 
 // テストファイルを追加したらここに追記する
 import './kana.test.js';
+import './dictionary.test.js';
+import './wordValidator.test.js';
+import './data.test.js';
+import './setup.test.js';
+import './damage.test.js';
+import './prompt.test.js';
+import './battle.test.js';
+import './judge.test.js';
+import './cpuAI.test.js';
 
 const results = await runAll();
 const failed = results.filter((r) => !r.ok);

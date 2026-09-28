@@ -334,7 +334,7 @@ h1:focus, h2:focus {
 }
 
 .fighter--player .hpbar__fill { background: var(--player); }
-.fighter--cpu .hpbar__fill    { background: var(--cpu); }
+.fighter--opponent .hpbar__fill { background: var(--cpu); }
 
 .prompt {
   padding: 18px 12px;
@@ -418,26 +418,6 @@ h1:focus, h2:focus {
   flex-shrink: 0;
 }
 
-.battle-log {
-  min-height: 3em;
-}
-
-.dev-tools {
-  margin-top: auto;
-  padding: 12px;
-  border: 1px dashed var(--border);
-  border-radius: var(--radius);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.dev-tools__row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
 /* ---------- 結果 ---------- */
 
 .screen--result {
@@ -517,4 +497,203 @@ h1:focus, h2:focus {
   .hpbar__fill {
     transition: none;
   }
+}
+
+/* ---------- バトル進行（実装順序4） ---------- */
+
+[hidden] {
+  display: none !important;
+}
+
+.battle-bar__round {
+  margin-left: 8px;
+  color: var(--text);
+}
+
+.battle-intro {
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.battle-intro__vs {
+  font-size: 1.125rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.battle-intro__rules {
+  padding-left: 1.2em;
+  list-style: disc;
+  font-size: 0.9375rem;
+  color: var(--text-muted);
+}
+
+.battle-intro .btn {
+  width: 100%;
+  min-height: 56px;
+  font-size: 1.125rem;
+}
+
+.answer-area {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.timer__fill {
+  transform-origin: left center;
+  transition: background-color 200ms ease;
+}
+
+.timer--urgent .timer__fill {
+  background: var(--lose);
+}
+
+.timer--urgent .timer__sec {
+  color: var(--lose);
+}
+
+.answer-status {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.answer-status__item.is-done {
+  color: var(--win);
+  font-weight: 700;
+}
+
+.answer-input[readonly] {
+  background: var(--surface-muted);
+  color: var(--text-muted);
+}
+
+.answer-submit:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.hpbar--low .hpbar__fill {
+  opacity: 0.75;
+}
+
+.battle-message {
+  min-height: 1.5em;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.judge {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.judge__title {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  letter-spacing: 0.1em;
+}
+
+.judge__summary {
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.judge__cards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+@media (min-width: 420px) {
+  .judge__cards {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.judge-card {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--surface-muted);
+  border-radius: 8px;
+  border-top: 4px solid var(--border);
+}
+
+.judge-card--player   { border-top-color: var(--player); }
+.judge-card--opponent { border-top-color: var(--cpu); }
+
+.judge-card__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.judge-card__name {
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.judge-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.judge-badge--valid   { color: var(--win);  background: color-mix(in srgb, var(--win) 15%, transparent); }
+.judge-badge--invalid { color: var(--lose); background: color-mix(in srgb, var(--lose) 15%, transparent); }
+.judge-badge--timeout { color: var(--text-muted); background: var(--hp-track); }
+
+.judge-card__word {
+  font-size: 1.375rem;
+  font-weight: 700;
+  word-break: break-all;
+}
+
+.judge-card__meta {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  word-break: break-all;
+}
+
+.judge-card__effect {
+  font-weight: 700;
+}
+
+.judge-card__effect--invalid {
+  font-weight: 400;
+  font-size: 0.875rem;
+  color: var(--lose);
+}
+
+.judge > .btn {
+  width: 100%;
+  min-height: 52px;
+}
+
+.result__reason {
+  font-size: 1rem;
 }

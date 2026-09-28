@@ -7,8 +7,13 @@ export const CONFIG = Object.freeze({
   battle: Object.freeze({
     timeLimitSec: 15,
     maxHp: 100,
-    // 両者時間切れがこの回数連続したら引き分け
-    drawAfterDoubleTimeouts: 3,
+    // この問題数だけ連続で、どちらからも有効な攻撃が発生しなかったら引き分け
+    drawAfterNoAttackRounds: 3,
+  }),
+
+  word: Object.freeze({
+    // 回答として認める最小の読みの文字数
+    minLength: 2,
   }),
 
   damage: Object.freeze({
@@ -16,7 +21,7 @@ export const CONFIG = Object.freeze({
     // 長さ補正 = 1 + (読みの文字数 - minLength) × lengthCoef
     minLength: 2,
     lengthCoef: 0.15,
-    // 時間補正 = maxTimeMul - (回答秒数 / 制限時間) × (maxTimeMul - minTimeMul)
+    // 時間補正 = maxTimeMul - (回答時間 / 制限時間) × (maxTimeMul - minTimeMul)
     maxTimeMul: 1.5,
     minTimeMul: 0.5,
   }),
