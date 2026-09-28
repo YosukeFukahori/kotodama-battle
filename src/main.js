@@ -3,6 +3,8 @@ import { selectScreen } from './ui/selectScreen.js';
 import { battleScreen } from './ui/battleScreen.js';
 import { resultScreen } from './ui/resultScreen.js';
 import { recordScreen } from './ui/recordScreen.js';
+import { getStore } from './storage/storage.js';
+import { findCpu } from './cpu/enemies.js';
 
 // 各画面は render({ navigate, params }) を持ち、次のどちらかを返す：
 //   - HTMLElement
@@ -42,4 +44,10 @@ function navigate(name, params = {}) {
   }
 }
 
-navigate('title');
+// 前回のバトル中に離脱（リロード・タブを閉じる等）していれば、敗北として1回だけ記録する
+const abandoned = getStore().recoverAbandonedMatch();
+const notice = abandoned
+  ? `前回のバトル（CPU：${findCpu(abandoned.cpuId)?.label ?? '?'}）を途中で離脱したため、敗北として記録しました。`
+  : null;
+
+navigate('title', { notice });

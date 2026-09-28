@@ -29,5 +29,7 @@ export const CONFIG = Object.freeze({
   storage: Object.freeze({
     key: 'kotodama.save',
     schemaVersion: 1,
+    // 保存する直近の試合履歴の件数（モードごと）
+    historyLimit: 30,
   }),
 });

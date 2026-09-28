@@ -697,3 +697,81 @@ h1:focus, h2:focus {
 .result__reason {
   font-size: 1rem;
 }
+
+/* ---------- 戦績・通知（実装順序5） ---------- */
+
+.notice {
+  padding: 12px 14px;
+  font-size: 0.875rem;
+  text-align: left;
+  color: var(--text);
+  background: var(--accent-soft);
+  border-radius: var(--radius);
+}
+
+.stats--4 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+@media (min-width: 400px) {
+  .stats--4 {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.history {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.history__item {
+  padding: 10px 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.history__item:first-child {
+  border-top: none;
+}
+
+.history__outcome {
+  flex-shrink: 0;
+  min-width: 4.5em;
+  padding: 2px 8px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  text-align: center;
+  border-radius: 999px;
+}
+
+.history__outcome--win  { color: var(--win);  background: color-mix(in srgb, var(--win) 15%, transparent); }
+.history__outcome--lose { color: var(--lose); background: color-mix(in srgb, var(--lose) 15%, transparent); }
+.history__outcome--draw { color: var(--draw); background: var(--hp-track); }
+
+.history__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.history__cpu {
+  font-weight: 700;
+}
+
+.history__detail {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+.history__date {
+  flex-shrink: 0;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}

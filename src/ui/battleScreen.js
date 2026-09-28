@@ -6,6 +6,7 @@ import { judgeAnswer } from '../core/judge.js';
 import { normalizeReading } from '../core/kana.js';
 import { getGameData } from '../dictionary/setup.js';
 import { rejectMessage } from '../dictionary/wordValidator.js';
+import { getStore } from '../storage/storage.js';
 import { h, button } from './dom.js';
 
 // バトル画面（docs/SPEC.md §3）。
@@ -41,6 +42,8 @@ export const battleScreen = {
     let phase = 'intro'; // intro | preparing | answering | judging | revealed | finished
     let round = null;    // { prompt, startedAt, answers: { player, opponent } }
     let lastPrompt = null;
+    let decidedRound = 0; // 何問目で決着したか
+    const store = getStore();
     const timers = new Set();
     let rafId = 0;
 
@@ -243,6 +246,8 @@ export const battleScreen = {
     function startBattle() {
       if (started) return;
       started = true;
+      // ここからがバトル開始。以降の離脱（リロード・閉じる）は次回起動時に敗北として記録される
+      store.beginMatch({ mode: 'cpu', cpuId: cpu.id });
       intro.hidden = true;
       answerArea.hidden = false;
       startRound();
@@ -258,6 +263,7 @@ export const battleScreen = {
       submitButton.textContent = '回答する';
       updateSubmitState();
       roundLabel.textContent = ` 第${battle.round + 1}問`;
+      store.setActiveRound(battle.round + 1);
       promptBox.replaceChildren(h('span', { class: 'prompt__text' }, 'お題を準備中…'));
       renderTimer(0);
 
@@ -336,6 +342,11 @@ export const battleScreen = {
 
       const outcome = resolveRound(battle, { player, opponent }, { timeLimitMs });
       battle = outcome.state;
+      if (battle.result) {
+        // 決着した瞬間に記録する（結果表示中に離脱しても敗北扱いにならないように）
+        decidedRound = battle.round;
+        recordResult();
+      }
       renderHp();
       renderJudgement({ player, opponent }, outcome);
       phase = battle.result ? 'finished' : 'revealed';
@@ -405,13 +416,18 @@ export const battleScreen = {
       judgePanel.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     }
 
+    function recordResult() {
+      const { outcome, reason } = battle.result;
+      store.finishMatch({ outcome: OUTCOME_FOR_RESULT[outcome], reason, rounds: decidedRound });
+    }
+
     function goToResult() {
       const { outcome, reason } = battle.result;
       navigate('result', {
         cpuId: cpu.id,
         outcome: OUTCOME_FOR_RESULT[outcome],
         reason,
-        rounds: battle.round,
+        rounds: decidedRound,
       });
     }
 
@@ -427,8 +443,11 @@ export const battleScreen = {
       // eslint-disable-next-line no-alert
       if (!window.confirm('バトルをやめると負けになります。やめますか？')) return;
       clearTimers();
+      // 出題中・判定中なら、その問題で決着したことにする
+      decidedRound = ['preparing', 'answering', 'judging'].includes(phase) ? battle.round + 1 : battle.round;
       phase = 'finished';
       battle = forfeit(battle, 'player');
+      recordResult();
       goToResult();
     }
 

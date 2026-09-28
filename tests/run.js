@@ -15,6 +15,7 @@ import './prompt.test.js';
 import './battle.test.js';
 import './judge.test.js';
 import './cpuAI.test.js';
+import './storage.test.js';
 
 const results = await runAll();
 const failed = results.filter((r) => !r.ok);
