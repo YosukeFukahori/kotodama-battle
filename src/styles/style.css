@@ -779,3 +779,32 @@ h1:focus, h2:focus {
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
+
+/* ---------- バトル画面の縦方向の詰め（実装順序7） ----------
+   小さいスマホ（iPhone SE 等）でソフトキーボードを出しても、
+   お題・残り時間・入力欄がキーボードの上に収まるよう、入力欄までの高さを抑える */
+
+.screen--battle {
+  gap: 10px;
+}
+
+.screen--battle .battle-bar .btn--small {
+  min-height: 36px;
+}
+
+.screen--battle .prompt {
+  padding: 10px 8px;
+  gap: 2px 4px;
+}
+
+.screen--battle .prompt__char {
+  font-size: 2.25rem;
+}
+
+.screen--battle .prompt__text {
+  font-size: 0.875rem;
+}
+
+.screen--battle .answer-area {
+  gap: 8px;
+}

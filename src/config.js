@@ -11,16 +11,22 @@ export const CONFIG = Object.freeze({
     drawAfterNoAttackRounds: 3,
   }),
 
+  prompt: Object.freeze({
+    // お題にするのは、出題用プール内に候補がこの数以上ある「最初×最後の文字」の組み合わせだけ
+    // （答えがほぼ1語しかないお題を避け、CPU が毎回同じ語を答えないようにするため）
+    minCandidates: 2,
+  }),
+
   word: Object.freeze({
     // 回答として認める最小の読みの文字数
     minLength: 2,
   }),
 
   damage: Object.freeze({
-    base: 10,
+    base: 11,
     // 長さ補正 = 1 + (ダメージ計算用文字数 - minLength) × lengthCoef
     minLength: 2,
-    lengthCoef: 0.15,
+    lengthCoef: 0.175,
     // MAX_DAMAGE_LENGTH：ダメージ計算に使う文字数の上限。
     // これより長い言葉も回答としては有効（表示も実際の文字数）。ダメージだけこの文字数で計算する
     maxDamageLength: 20,

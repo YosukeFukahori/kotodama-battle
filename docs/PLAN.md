@@ -8,9 +8,10 @@
 kotodama-battle/
 ├── index.html
 ├── README.md / CLAUDE.md / THIRD_PARTY_LICENSES.md
-├── docs/            SPEC.md, PLAN.md
+├── docs/            SPEC.md, PLAN.md, MOBILE_CHECKLIST.md（スマホ実機確認）
 ├── tools/
 │   ├── serve.py                              # 開発用サーバー（キャッシュ無効）
+│   ├── sim/                                  # バランス調整用シミュレーター（/tools/sim/）
 │   └── build_dictionary.py                   # SudachiDict → data/official/（手元で実行）
 ├── data/
 │   ├── official/                             # 公式辞書（生成物）：index.json と「最初×最後」ごとの JSON
@@ -40,7 +41,7 @@ kotodama-battle/
 | 4 | 出題・ダメージ・判定タイム方式のバトル進行・CPU 3難易度 | 遊べる | 完了 |
 | 5 | CPU戦績の保存（`storage.js`）・戦績画面・離脱時の敗北記録（`activeMatch`） | 勝敗が残る | 完了 |
 | 6 | 本番の公式辞書を生成し、分割して読み込む | 実用的な辞書 | 完了 |
-| 7 | CPU 3難易度・バランス調整・スマホ実機確認 | 仲間内テスト可 | |
+| 7 | CPU 3難易度・バランス調整・スマホ実機確認 | 仲間内テスト可 | 実機確認以外は完了 |
 | 8 | GitHub Pages 公開・README・ライセンス表記 | Ver.0.1 リリース | |
 
 ## ローカルでの確認方法
@@ -67,6 +68,9 @@ python3 tools/serve.py
 - localStorage が使えない環境ではメモリ上で続行（ページを閉じるまで保持）
 - 公式辞書：SudachiDict small+core。名詞＋動詞・形容詞の基本形。人名はフルネームのみ。住所状の地名・英字だけの語・読み130文字以上の語は除外
 - ダメージ計算に使う文字数は最大20文字（`damage.maxDamageLength`）。実際の文字数（表示・有効性）とは分けて扱う
+- ダメージ式：基本11・長さ係数0.175・時間補正1.5〜0.5（HP100で平均6.5〜7.5問）
+- CPU：回答時間＝考える時間（ばらつきあり）＋入力時間×文字数。狙う文字数の分布から候補を選ぶ。同じバトルで同じ語を避ける
+- 出題：プール内に候補2語以上・公式辞書に答え20語以上の組み合わせのみ（290組）
 - バトル開始後の「やめる」は敗北扱い
 - リロード・途中離脱も敗北扱い。`activeMatch` の目印で将来の対人戦と同じ考え方に揃える（SPEC §3.5）
 - CPU戦ではレーティングは一切変動しない

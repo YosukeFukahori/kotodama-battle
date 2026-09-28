@@ -104,13 +104,19 @@ test('データ整合性：出題用プールの単語はすべて公式辞書�
   }
 });
 
-test('データ整合性：出題用プールから十分な種類のお題が作れる', async () => {
-  const pool = new PromptPool((await loadJson(POOL)).entries);
-  const keys = new Set();
-  for (let i = 0; i < 2000; i += 1) {
-    const p = pool.next();
-    keys.add(`${p.first}|${p.last}`);
+test('データ整合性：出題用プールから十分な種類のお題が作れる（候補2語以上の組み合わせのみ）', async () => {
+  const pool = new PromptPool((await loadJson(POOL)).entries, { minCandidates: CONFIG.prompt.minCandidates });
+  assert.ok(pool.size >= 200, `お題の種類が少なすぎる（${pool.size}）`);
+  for (const p of pool.prompts) {
+    assert.ok(pool.candidates(p).length >= CONFIG.prompt.minCandidates, `${p.first}→${p.last} の候補が少ない`);
   }
-  assert.ok(pool.size >= 100, `お題の元にできる単語が少なすぎる（${pool.size}）`);
-  assert.ok(keys.size >= 100, `お題の種類が少なすぎる（${keys.size}）`);
+});
+
+test('データ整合性：どのお題にも公式辞書に答えが20語以上ある（極端に難しいお題を出さない）', async () => {
+  const index = await loadJson(INDEX);
+  const pool = new PromptPool((await loadJson(POOL)).entries, { minCandidates: CONFIG.prompt.minCandidates });
+  for (const p of pool.prompts) {
+    const n = index.counts?.[p.first]?.[p.last] ?? 0;
+    assert.ok(n >= 20, `${p.first}→${p.last} の答えが公式辞書に ${n} 語しかない`);
+  }
 });

@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>言霊バトル バランスシミュレーター</title>
+  <style>
+    body { margin: 0; padding: 16px; font: 13px/1.5 ui-monospace, Menlo, monospace; background: #fff; color: #111; }
+    pre { white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <p>試合数：<input id="matches" type="number" value="100" min="1" style="width:6em"> <button id="run">実行</button></p>
+  <pre id="out">「実行」を押すと、各難易度 × プレイヤーモデルで対戦を回して集計します。</pre>
+  <script type="module">
+    import { runAll } from './sim.js';
+    const out = document.getElementById('out');
+    document.getElementById('run').addEventListener('click', async () => {
+      out.textContent = '実行中…';
+      const t = performance.now();
+      const result = await runAll({ matches: Number(document.getElementById('matches').value) });
+      window.lastResult = result;
+      out.textContent = `${((performance.now() - t) / 1000).toFixed(1)}秒\n` + JSON.stringify(result, null, 2);
+    });
+  </script>
+</body>
+</html>

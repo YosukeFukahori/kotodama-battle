@@ -76,3 +76,27 @@ test('出題されるお題の文字は必ず出題可能文字', () => {
     assert.ok(isPromptLastChar(p.last), p.last);
   }
 });
+
+// ---------- 候補数の条件（prompt.minCandidates） ----------
+
+test('候補が minCandidates 語未満の組み合わせはお題にしない', () => {
+  const pool = new PromptPool([['あめ'], ['あたため'], ['いぬ'], ['うみ'], ['うらみ']], { minCandidates: 2 });
+  assert.equal(pool.size, 2);
+  for (let i = 0; i < 30; i += 1) {
+    const p = pool.next();
+    assert.ok(['あ|め', 'う|み'].includes(`${p.first}|${p.last}`), `${p.first}|${p.last}`);
+  }
+  assert.equal(pool.candidates({ first: 'い', last: 'ぬ' }).length, 1, '候補としては残る');
+});
+
+test('お題は組み合わせ単位で均等に選ぶ（単語数の多い組み合わせに偏らない）', () => {
+  const pool = new PromptPool([['あめ'], ['あいずめ'], ['あたため'], ['あわため'], ['いぬ']]);
+  const counts = { 'あ|め': 0, 'い|ぬ': 0 };
+  let i = 0;
+  const random = () => ((i++ * 0.37) % 1);
+  for (let n = 0; n < 1000; n += 1) {
+    const p = pool.next({ random });
+    counts[`${p.first}|${p.last}`] += 1;
+  }
+  assert.ok(Math.abs(counts['あ|め'] - counts['い|ぬ']) < 100, JSON.stringify(counts));
+});

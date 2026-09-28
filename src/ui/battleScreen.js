@@ -51,6 +51,7 @@ export const battleScreen = {
     let round = null;    // { prompt, startedAt, answers: { player, opponent } }
     let lastPrompt = null;
     let decidedRound = 0; // 何問目で決着したか
+    const cpuUsedWords = new Set(); // このバトルで CPU が使った語（なるべく繰り返さない）
     const store = getStore();
     const timers = new Set();
     let rafId = 0;
@@ -290,7 +291,8 @@ export const battleScreen = {
       }
 
       lastPrompt = prompt;
-      const cpuPlan = planCpuAnswer(cpu, pool.candidates(prompt), { timeLimitMs });
+      const cpuPlan = planCpuAnswer(cpu, pool.candidates(prompt), { timeLimitMs, avoid: cpuUsedWords });
+      if (cpuPlan.status === 'answered') cpuUsedWords.add(cpuPlan.input);
       round = { prompt, answers: { player: null, opponent: null }, startedAt: 0 };
       renderPrompt(prompt);
       renderStatus();

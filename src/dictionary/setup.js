@@ -37,7 +37,7 @@ export function createDictionaries({ loadJson = fetchJson } = {}) {
 /** 出題・CPU回答用のプールを読み込む。 */
 export async function loadPromptPool({ loadJson = fetchJson } = {}) {
   const data = await loadJson(new URL('prompt-pool.json', DATA_DIR));
-  return new PromptPool(data.entries);
+  return new PromptPool(data.entries, { minCandidates: CONFIG.prompt.minCandidates });
 }
 
 // 画面をまたいで辞書のキャッシュを使い回すための共有インスタンス
