@@ -8,6 +8,7 @@
 // - 保存先（storage）は getItem / setItem を持つものを注入できる（テストではメモリ上の実装を使う）
 
 import { CONFIG } from '../config.js';
+import { profileKey } from '../match/identity.js';
 
 export const MODES = Object.freeze(['cpu', 'friend', 'ranked']);
 
@@ -209,6 +210,7 @@ let shared = null;
 
 /** アプリ全体で使うセーブデータ（localStorage）。 */
 export function getStore() {
-  shared ??= new SaveStore({ storage: browserStorage() });
+  // ?profile=xxx のときは保存先を分ける（同じブラウザで2画面テストするため）
+  shared ??= new SaveStore({ storage: browserStorage(), key: profileKey(CONFIG.storage.key) });
   return shared;
 }

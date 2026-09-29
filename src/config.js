@@ -19,6 +19,18 @@ export const CONFIG = Object.freeze({
     }),
   }),
 
+  // フレンド対戦（docs/SPEC.md §10）。時間はミリ秒
+  friend: Object.freeze({
+    codeDigits: 6,
+    roomTtlMs: 30 * 60 * 1000,   // 部屋の有効期限
+    startDelayMs: 2000,          // 両者の準備OKから ROUND 1 までの余裕（通信の遅れを吸収する）
+    answerGraceMs: 800,          // 締め切り後、遅れて届く回答を待つ時間
+    revealDelayMs: 300,          // 判定を書き込んでから両端末に表示するまでの余裕
+    heartbeatMs: 1500,           // 接続確認の間隔
+    disconnectAfterMs: 5000,     // この時間、接続確認が途絶えたら切断とみなす
+    reconnectWaitMs: 20000,      // 切断から復帰を待つ時間。過ぎたら試合中止（記録なし）
+  }),
+
   effects: Object.freeze({
     // 判定タイムで、有効な回答の実際の文字数に応じて出す追加表示（minLength 以上。長い順に判定）
     longWord: Object.freeze([
