@@ -962,3 +962,116 @@ h1:focus, h2:focus {
     to { opacity: 0; }
   }
 }
+
+/* ---------- フレンド対戦ロビー ---------- */
+
+.lobby {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.lobby-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.lobby-label {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.lobby-input {
+  min-height: 52px;
+  padding: 0 14px;
+  font: inherit;
+  font-size: 1.125rem;
+  color: var(--text);
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.lobby-input:focus {
+  outline: none;
+  border-color: var(--player);
+}
+
+.lobby-input--code {
+  letter-spacing: 0.3em;
+  font-variant-numeric: tabular-nums;
+}
+
+.lobby .panel .btn {
+  width: 100%;
+}
+
+.lobby-error {
+  min-height: 1.2em;
+  color: var(--lose);
+  font-size: 0.875rem;
+}
+
+.lobby-room {
+  align-items: center;
+  text-align: center;
+}
+
+.lobby-code__label {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+.lobby-code {
+  font-family: var(--font-display);
+  font-size: 2.75rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  font-variant-numeric: tabular-nums;
+  user-select: all;
+}
+
+.lobby-players {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lobby-player {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--surface-muted);
+  border-radius: 8px;
+}
+
+.lobby-player__name {
+  font-weight: 700;
+}
+
+.lobby-player__you {
+  margin-left: 4px;
+  font-weight: 400;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+.lobby-player__ready {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.lobby-player__ready.is-ready {
+  color: var(--win);
+  font-weight: 700;
+}
+
+.result--aborted .result__label {
+  color: var(--draw);
+}

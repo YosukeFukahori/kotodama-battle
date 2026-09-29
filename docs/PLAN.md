@@ -85,3 +85,16 @@ python3 tools/serve.py
 
 1. 公式辞書にない言葉の追加（`data/extra-words.json` に随時追記）
 2. 同音異義語の代表表記（出題用プールにない言葉は機械的に選ぶため、珍しい漢字になることがある）
+
+## Ver.0.2 フレンド対戦（仕様は SPEC §10、引き継ぎは HANDOFF.md）
+
+| # | 内容 | 状態 |
+|---|---|---|
+| 1 | MatchSession / CpuSession（CPU戦の挙動は不変） | 完了 |
+| 2 | referee.js（審判の共通化） | 完了 |
+| 3 | 戦績 cpu / friend / ranked | 完了 |
+| 4 | 通信なしの FriendSession（LocalRoomStore） | 完了 |
+| 5 | ロビー UI ＋ 2画面の操作テスト | 完了 |
+| 6 | Firebase（匿名認証・Realtime Database・asia-southeast1）接続 | 未着手 |
+| 7 | 実機2台での仲間内テスト・公開 | 未着手 |
+

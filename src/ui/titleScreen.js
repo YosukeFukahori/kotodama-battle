@@ -11,6 +11,7 @@ export const titleScreen = {
       params.notice && h('p', { class: 'notice', role: 'status' }, params.notice),
       h('nav', { class: 'menu', 'aria-label': 'メインメニュー' },
         button('バトル', () => navigate('select')),
+        button('フレンド対戦', () => navigate('lobby'), { variant: 'secondary' }),
         button('戦績', () => navigate('record'), { variant: 'secondary' }),
       ),
       h('p', { class: 'version' }, `Ver.${CONFIG.version}`,

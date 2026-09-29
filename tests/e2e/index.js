@@ -4,9 +4,12 @@
 import { render, check } from './lib.js';
 import { runRoundInput } from './roundInput.js';
 import { runCpuMatch } from './cpuMatch.js';
+import { runFriendMatch } from './friendMatch.js';
+import { runFriendRejoin } from './friendRejoin.js';
 
 const KEYS_PREFIX = 'kotodama.';
 const frame = document.getElementById('app');
+const frame2 = document.getElementById('app2');
 
 function backupStorage() {
   const saved = {};
@@ -26,6 +29,8 @@ const only = new URLSearchParams(location.search).get('only'); // ?only=cpu な�
 const scenarios = [
   ['input', runRoundInput],
   ['cpu', runCpuMatch],
+  ['friend', () => runFriendMatch(frame, frame2)],
+  ['rejoin', () => runFriendRejoin(frame, frame2)],
 ];
 
 const saved = backupStorage();
@@ -39,6 +44,7 @@ try {
   check('実行中にエラー', false, error.message);
 } finally {
   frame.src = 'about:blank';
+  frame2.src = 'about:blank';
   restoreStorage(saved);
   document.getElementById('running').textContent = '';
   render();

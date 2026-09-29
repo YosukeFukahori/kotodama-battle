@@ -174,3 +174,18 @@ export class LocalRoomStore {
 function structuredCloneSafe(value) {
   return value && typeof value === 'object' ? JSON.parse(JSON.stringify(value)) : value;
 }
+
+let sharedStore = null;
+
+/**
+ * アプリで使う部屋データの保存先。
+ * Ver.0.2 の Firebase 接続前は LocalRoomStore（同じブラウザの別タブ・iframe の間だけで対戦できる）。
+ * Firebase 導入時はここを FirebaseRoomStore に差し替える。
+ */
+export function getRoomStore() {
+  sharedStore ??= new LocalRoomStore();
+  return sharedStore;
+}
+
+/** 通信なし（同じブラウザ内だけ）の保存先を使っているか */
+export const isLocalOnlyRoomStore = () => getRoomStore() instanceof LocalRoomStore;

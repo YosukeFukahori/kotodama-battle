@@ -3,6 +3,11 @@ import { selectScreen } from './ui/selectScreen.js';
 import { battleScreen } from './ui/battleScreen.js';
 import { resultScreen } from './ui/resultScreen.js';
 import { recordScreen } from './ui/recordScreen.js';
+import { friendLobbyScreen } from './ui/friendLobbyScreen.js';
+import { getRoomStore } from './net/roomStore.js';
+import { roomPath, isExpired } from './match/friendRoom.js';
+import { FriendSession } from './match/friendSession.js';
+import { loadCurrentRoom, saveCurrentRoom } from './match/identity.js';
 import { getStore } from './storage/storage.js';
 import { findCpu } from './cpu/enemies.js';
 
@@ -16,6 +21,7 @@ const screens = {
   battle: battleScreen,
   result: resultScreen,
   record: recordScreen,
+  lobby: friendLobbyScreen,
 };
 
 const app = document.getElementById('app');
@@ -50,4 +56,20 @@ const notice = abandoned
   ? `前回のバトル（CPU：${findCpu(abandoned.cpuId)?.label ?? '?'}）を途中で離脱したため、敗北として記録しました。`
   : null;
 
-navigate('title', { notice });
+/** 対戦中のフレンド戦があれば復帰する（再読み込み・切断からの復帰。相手は最大20秒待つ） */
+async function resumeFriendMatch() {
+  const current = loadCurrentRoom();
+  if (!current) return false;
+  const store = getRoomStore();
+  const room = await store.get(roomPath(current.code)).catch(() => null);
+  if (room?.match?.status === 'playing' && !isExpired(room, store.serverNow())) {
+    navigate('battle', { session: new FriendSession({ store, code: current.code, side: current.side, room }) });
+    return true;
+  }
+  saveCurrentRoom(null);
+  return false;
+}
+
+resumeFriendMatch().then((resumed) => {
+  if (!resumed) navigate('title', { notice });
+});

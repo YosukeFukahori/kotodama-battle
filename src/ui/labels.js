@@ -4,6 +4,7 @@ export const OUTCOME_LABEL = Object.freeze({
   win: '勝利',
   lose: '敗北',
   draw: '引き分け',
+  aborted: '試合中止',
 });
 
 /** 決着理由の説明（結果画面用）。 */
@@ -12,8 +13,9 @@ export function reasonText(outcome, reason) {
     case 'ko': return outcome === 'win' ? '相手のHPを0にした！' : 'HPが0になった…';
     case 'double-ko': return '相打ち（両者のHPが同時に0）';
     case 'no-attack': return '3問連続でどちらも攻撃できなかった';
-    case 'forfeit': return '途中でやめたため敗北';
+    case 'forfeit': return outcome === 'win' ? '相手が途中でやめたため勝利' : '途中でやめたため敗北';
     case 'abandon': return '途中で離脱したため敗北';
+    case 'disconnect': return '接続が切れたため試合を中止しました（勝敗は記録しません）';
     default: return '';
   }
 }
@@ -26,6 +28,7 @@ export function reasonShort(reason) {
     case 'no-attack': return '無攻撃';
     case 'forfeit': return 'やめた';
     case 'abandon': return '離脱';
+    case 'disconnect': return '中止';
     default: return '';
   }
 }

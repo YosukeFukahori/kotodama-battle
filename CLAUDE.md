@@ -26,11 +26,13 @@
 
 ## 技術方針
 
-- HTML / CSS / JavaScript（ES Modules）。ビルドなし・外部ライブラリなし
+- HTML / CSS / JavaScript（ES Modules）。ビルドなし・外部ライブラリなし（例外：Ver.0.2 のフレンド戦に限り Firebase 公式 JS SDK を許可。フレンド戦でのみ読み込む）
 - 保存は localStorage（キー `kotodama.save`、`version` 付き）
 - バランスや動作に関わる数値はすべて `src/config.js` に置く。ロジック側にマジックナンバーを書かない
 - ロジック（`src/core/`, `src/dictionary/`, `src/cpu/cpuAI.js`）は DOM に依存させず、Node でテストできるようにする
 - 画面は `src/ui/*Screen.js`。`render({ navigate, params })` で要素を返す
+- 対戦の進行はセッション（`src/match/*Session.js`）が持ち、バトル画面はイベントを表示するだけ。審判は `src/match/referee.js` に一本化
+- 開発の引き継ぎは `HANDOFF.md`（現在の到達点・設計判断・次の作業）
 - 文字判定・文字数はすべて「読み」（正規化済みひらがな）で行い、表示には「表記」を使う。かなの処理は `src/core/kana.js` に集約する
 
 ## 開発手順
@@ -51,5 +53,5 @@ node tests/run.js
 - 実装順序は `docs/PLAN.md` に従う
 - ロジックを追加・変更したらテストも追加・更新する
 - UI を変えたらスマホ幅（375px 程度）で表示を確認する
-- バトル画面の入力まわりを変えたら操作テスト（`/tests/e2e/`）も実行する
+- バトル画面・セッション・ロビーを変えたら操作テスト（`/tests/e2e/`、`?only=input|cpu|friend|rejoin` で個別実行）も実行する
 - バランス（ダメージ式・CPU設定・出題条件）を変えたら、シミュレーター（`/tools/sim/`）で勝率と平均問題数を確認する
