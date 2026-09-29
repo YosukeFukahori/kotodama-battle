@@ -3,13 +3,13 @@
 
 import { CONFIG } from '../config.js';
 import { planCpuAnswer } from '../cpu/cpuAI.js';
-import { createBattle, resolveRound, forfeit } from '../core/battle.js';
-import { judgeAnswer } from '../core/judge.js';
+import { createBattle, forfeit } from '../core/battle.js';
 import { normalizeReading } from '../core/kana.js';
 import { scheduleRound, delayFight, nextRoundAt } from '../core/roundSchedule.js';
 import { getGameData } from '../dictionary/setup.js';
 import { getStore } from '../storage/storage.js';
 import { BaseSession, OUTCOME_FOR_PLAYER } from './session.js';
+import { refereeRound } from './referee.js';
 
 export class CpuSession extends BaseSession {
   mode = 'cpu';
@@ -162,16 +162,16 @@ export class CpuSession extends BaseSession {
     }
     this.emit({ type: 'judging' });
 
-    const { validator } = this.#data;
-    const [player, opponent] = await Promise.all([
-      judgeAnswer(validator, this.#round.answers.player, this.#round.prompt),
-      judgeAnswer(validator, this.#round.answers.opponent, this.#round.prompt),
-    ]);
+    // 審判（CPU戦では自分の端末）
+    const { judged, resolution, state, finished } = await refereeRound({
+      validator: this.#data.validator,
+      state: this.#battle,
+      prompt: this.#round.prompt,
+      answers: this.#round.answers,
+      timeLimitMs: this.timeLimitMs,
+    });
     if (this.disposed) return;
-
-    const outcome = resolveRound(this.#battle, { player, opponent }, { timeLimitMs: this.timeLimitMs });
-    this.#battle = outcome.state;
-    const finished = Boolean(this.#battle.result);
+    this.#battle = state;
     if (finished) {
       // 決着した瞬間に記録する（結果表示中に離脱しても敗北扱いにならないように）
       this.#decidedRound = this.#battle.round;
@@ -184,8 +184,8 @@ export class CpuSession extends BaseSession {
     const nextAt = nextRoundAt(revealAt, this.timing);
     this.emit({
       type: 'result',
-      judged: { player, opponent },
-      outcome,
+      judged,
+      outcome: resolution,
       hp: this.#battle.hp,
       noAttackStreak: this.#battle.noAttackStreak,
       drawAfter: this.#battle.drawAfterNoAttackRounds,
