@@ -8,7 +8,7 @@
 - 3：戦績 cpu / friend / ranked。friend はレート変更なし。過去データは既定値で補完
 - 4：通信なしのフレンド戦（LocalRoomStore ＋ FriendSession）
 - 5：ロビー UI（部屋作成・6桁コード・参加・準備OK）、再読み込みからの自動復帰、2画面の操作テスト
-- 手順6（コード側）：Firebase 版 RoomStore・匿名認証・接続状態・アクセスルール・通信遅延テスト。Firebase の設定値（src/net/firebaseConfig.js）が未入力なので、今は通信なし版で動く
+- 手順6：Firebase 接続完了（プロジェクト kotodama-battle、RTDB asia-southeast1、匿名認証、ルール公開済み）。設定値は src/net/firebaseConfig.js。本物の Firebase で e2e（friend / rejoin / abort / 遅延あり）と実ルールテスト（tests/live/、35件）が通過
 - 未 push（最後の push は 04410bd まで。公開版に Ver.0.2 はまだ出ていない）
 
 ## 重要な設計判断
@@ -31,13 +31,15 @@
 - `tests/friend.test.js`（部屋・同期・切断）、`tests/e2e/`（input / cpu / friend / rejoin）
 
 ## 次にやること
-- ユーザーが Firebase コンソールで：プロジェクト作成 → Web アプリ登録 → 匿名認証を有効化 → Realtime Database 作成（asia-southeast1）→ database.rules.json を貼る → 設定値を受け取って src/net/firebaseConfig.js に書く
-- 本物の Firebase で tests/rules.test.js と同じケースを実際の匿名ユーザーで確認する（評価器は近似のため）
-- Firebase 接続で e2e（friend / rejoin / abort）を実行（?store= を付けなければ Firebase を使う。?latencyHost=&latencyGuest= で遅延も足せる）
-- 実機2台で確認 → MOBILE_CHECKLIST にフレンド戦の項目を追加 → push・公開
+- 実機2台（別回線）でフレンド戦を確認 → MOBILE_CHECKLIST にフレンド戦の項目を追加
+- push 前の確認（下の注意点）→ push・公開（ユーザーの指示を待つ）
 
 ## 注意点
 - テストはブラウザで実行（`/tests/` ロジック 214件、`/tests/e2e/` 操作：input / cpu / friend / rejoin / abort。全部で約3分）
 - e2e の iframe は ?profile= ごとに別の Firebase アプリ名で初期化される → 別の匿名ユーザーになる
-- 設定値が null のままだとロビーは通信なし版（注意書きが出る）。公開前に設定値を入れて Firebase で確認すること
+- e2e は ?store= を付けなければ本物の Firebase を使う（?store=local で通信なし版）。?latencyHost=&latencyGuest= で遅延を足せる
+- 実ルールテストは /tests/live/（3人の匿名ユーザー＋未ログイン。テスト用の部屋は25秒で期限切れにして最後に削除）
+- ルールを変えたら tests/rules.test.js（評価器）と /tests/live/（本物）の両方を実行し、コンソールへの公開はユーザーが行う
+- e2e で作った部屋は RTDB に残る（30分で期限切れ。自動削除はしない）
+- 開発機の時計はサーバーより約2.1秒ずれていたが、serverTimeOffset で補正され同期に影響なし
 - 部屋データの古いもの（kotodama.room:*）は自動削除しない（Firebase 版で要検討）
