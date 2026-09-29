@@ -9,7 +9,7 @@
         ".validate": "$code.matches(/^[0-9]{6}$/)",
         "meta": {
           "status": {
-            ".write": "auth != null && (root.child('rooms/' + $code + '/players/host/id').val() === auth.uid || (root.child('rooms/' + $code + '/players/guest/id').val() === auth.uid && (newData.val() === 'finished' || newData.val() === 'aborted')))"
+            ".write": "auth != null && root.child('rooms/' + $code + '/players/host/id').val() === auth.uid"
           }
         },
         "players": {
@@ -24,12 +24,19 @@
           }
         },
         "match": {
-          ".write": "auth != null && root.child('rooms/' + $code + '/players/host/id').val() === auth.uid",
-          "status": {
-            ".write": "auth != null && root.child('rooms/' + $code + '/players/guest/id').val() === auth.uid && (newData.val() === 'finished' || newData.val() === 'aborted')"
+          ".write": "auth != null && root.child('rooms/' + $code + '/players/host/id').val() === auth.uid"
+        },
+        "signals": {
+          "forfeit": {
+            "guest": {
+              ".write": "auth != null && !data.exists() && root.child('rooms/' + $code + '/players/guest/id').val() === auth.uid"
+            },
+            "$other": {
+              ".validate": false
+            }
           },
-          "result": {
-            ".write": "auth != null && root.child('rooms/' + $code + '/players/guest/id').val() === auth.uid && newData.child('reason').val() === 'forfeit' && newData.child('outcome').val() === 'host'"
+          "$other": {
+            ".validate": false
           }
         },
         "rounds": {

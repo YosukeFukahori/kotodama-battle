@@ -104,6 +104,7 @@ export class FriendSession extends BaseSession {
   #current = null;          // 今のラウンド { n, prompt, fightLocal, deadlineLocal, answered, oppAnswered, closed }
   #opponentConnected = true;
   #stopPresence = null;
+  #forfeitRequested = false;
 
   /**
    * @param {{ store, code: string, side: 'host'|'guest', room: object, data?, storage? }} options
@@ -192,7 +193,8 @@ export class FriendSession extends BaseSession {
       }
       this.#opponentConnected = connected;
       if (!connected && now - lostAt > reconnectWaitMs) {
-        this.#store.update(this.#path, { 'match/status': 'aborted', 'meta/status': 'aborted' });
+        // 中止を部屋に確定するのはホストだけ。ホスト側が落ちている場合、ゲストは自分の端末の中だけで中止として終える
+        if (this.#side === 'host') this.#store.update(this.#path, { 'match/status': 'aborted', 'meta/status': 'aborted' });
         this.#finishAborted();
         return;
       }
@@ -217,6 +219,11 @@ export class FriendSession extends BaseSession {
     }
     if (match.result?.reason === 'forfeit') {
       this.#finishFromMatch(match);
+      return;
+    }
+    // ホスト：ゲストの降参リクエストを検知したら、ゲストの負けを確定する
+    if (this.#side === 'host' && room.signals?.forfeit?.guest && match.status === 'playing') {
+      this.#hostConfirmForfeit('guest', match);
       return;
     }
 
@@ -403,6 +410,12 @@ export class FriendSession extends BaseSession {
 
   // ---------- 終了 ----------
 
+  /**
+   * やめる（押した側の負け）。試合状態・勝敗を確定できるのはホストだけ（docs/SPEC.md §10.4）。
+   *   ホスト：自分の負けをそのまま確定する
+   *   ゲスト：降参リクエスト（signals/forfeit/guest）を書き、ホストの確定を待つ。
+   *           ホストが一定時間内に確定しなければ（ホストが落ちている等）、自分の端末で負けとして終える
+   */
   forfeit() {
     if (this.#ended) return;
     const match = this.#room?.match;
@@ -410,7 +423,22 @@ export class FriendSession extends BaseSession {
       if (match?.result) this.#finishFromMatch(match);
       return;
     }
-    const result = { outcome: otherSide(this.#side), reason: 'forfeit', decidedRound: match.round };
+    if (this.#side === 'host') {
+      this.#hostConfirmForfeit('host', match);
+      return;
+    }
+    if (this.#forfeitRequested) return;
+    this.#forfeitRequested = true;
+    this.#store.set(`${this.#path}/signals/forfeit/guest`, { at: this.#store.serverNow(), round: match.round });
+    const waitMs = this.#rules.friend.forfeitConfirmWaitMs ?? 4000;
+    this.later(() => {
+      this.#finishFromMatch({ ...match, result: { outcome: 'host', reason: 'forfeit', decidedRound: match.round } });
+    }, waitMs);
+  }
+
+  /** ホスト：「やめる」による決着を確定する（loser が負け） */
+  #hostConfirmForfeit(loser, match) {
+    const result = { outcome: otherSide(loser), reason: 'forfeit', decidedRound: match.round };
     this.#store.update(this.#path, { 'match/status': 'finished', 'match/result': result, 'meta/status': 'finished' });
     this.#finishFromMatch({ ...match, result });
   }

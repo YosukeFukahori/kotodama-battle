@@ -292,3 +292,61 @@ test('フレンド戦：相手の connected が false（Firebase の onDisconnec
   assert.equal(end?.e.outcome, 'aborted');
   assert.ok(end.t - lostAt < 2500, `復帰待ち（0.5秒）を過ぎたら中止（${Math.round(end.t - lostAt)}ms）`);
 });
+
+async function playingRoom(rules = fastRules()) {
+  const store = newStore();
+  const data = fakeData();
+  rules.timeLimitMs = 5000;
+  rules.friend = { ...rules.friend, forfeitConfirmWaitMs: 300 };
+  const code = await createRoom(store, { clientId: 'H', name: 'はな', rules });
+  await joinRoom(store, code, { clientId: 'G', name: 'げん' });
+  await setReady(store, code, 'host', true);
+  await setReady(store, code, 'guest', true);
+  await startMatch(store, code, { pool: await data.promptPool });
+  return { store, data, code, room: await store.get(roomPath(code)) };
+}
+
+test('フレンド戦：ゲストの「やめる」は降参リクエスト → ホストが確定（ゲストは試合状態を書かない）', async () => {
+  const { store, data, code, room } = await playingRoom();
+  const saves = { host: memorySave(), guest: memorySave() };
+  const ends = {};
+  const sessions = ['host', 'guest'].map((side) => {
+    const s = new FriendSession({ store, code, side, room, data, storage: saves[side] });
+    s.on((e) => { if (e.type === 'end') ends[side] = { e, t: performance.now() }; });
+    s.start();
+    return s;
+  });
+  await sleep(150);
+  const t0 = performance.now();
+  sessions[1].forfeit();
+  const until = performance.now() + 3000;
+  while ((!ends.host || !ends.guest) && performance.now() < until) await sleep(10);
+  sessions.forEach((s) => s.dispose());
+
+  const r = await store.get(roomPath(code));
+  assert.ok(r.signals.forfeit.guest, 'ゲストは降参リクエストを書く');
+  assert.deepEqual({ status: r.match.status, outcome: r.match.result.outcome, reason: r.match.result.reason, meta: r.meta.status },
+    { status: 'finished', outcome: 'host', reason: 'forfeit', meta: 'finished' }, 'ホストが確定する');
+  assert.equal(ends.host?.e.outcome, 'win');
+  assert.equal(ends.guest?.e.outcome, 'lose');
+  assert.ok(ends.guest.t - t0 < 250, `ゲストはホストの確定を受けてすぐ終わる（待ち時間の前）：${Math.round(ends.guest.t - t0)}ms`);
+  assert.equal(saves.guest.load().record.friend.losses, 1);
+  assert.equal(saves.host.load().record.friend.wins, 1);
+});
+
+test('フレンド戦：ホストが応答しないとき、ゲストの「やめる」は自分の端末で負けとして終える（部屋の試合状態は書かない）', async () => {
+  const { store, data, code, room } = await playingRoom();
+  const save = memorySave();
+  const guest = new FriendSession({ store, code, side: 'guest', room, data, storage: save });
+  let end = null;
+  guest.on((e) => { if (e.type === 'end') end = e; });
+  guest.start();
+  await sleep(100);
+  guest.forfeit();
+  const until = performance.now() + 2000;
+  while (!end && performance.now() < until) await sleep(10);
+  guest.dispose();
+  assert.equal(end?.outcome, 'lose');
+  assert.equal(save.load().record.friend.losses, 1);
+  assert.equal((await store.get(roomPath(code))).match.status, 'playing', 'ゲストは試合状態を書き換えない');
+});

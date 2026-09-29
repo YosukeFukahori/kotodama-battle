@@ -29,6 +29,7 @@ export const CONFIG = Object.freeze({
     heartbeatMs: 1500,           // 接続確認の間隔
     disconnectAfterMs: 5000,     // この時間、接続確認が途絶えたら切断とみなす
     reconnectWaitMs: 20000,      // 切断から復帰を待つ時間。過ぎたら試合中止（記録なし）
+    forfeitConfirmWaitMs: 4000,  // ゲストの「やめる」をホストが確定するのを待つ時間。過ぎたらゲストの端末で負けとして終える
   }),
 
   effects: Object.freeze({

@@ -19,12 +19,13 @@
 - ホストの裁定は「判定結果＋状態＋次ラウンド」を store.update で一括（途中状態を見せない）。ラウンドは roundFields() で schedule / prompt を別パスに書く（ルールの都合。rounds/{n} 丸ごとは書けない）
 - 切断：players/{side}/lastSeen を定期更新 → 途絶で接続待ち表示 → 20秒超で match.status=aborted（記録なし）。再読み込みは main.js の resumeFriendMatch で復帰
 - 「やめる」はやめた側の負け（確定）。切断20秒超の中止は記録なし（確定）
+- 試合状態・勝敗の確定（match.* / meta.status）はホストだけ。ゲストの「やめる」は signals/forfeit/guest を書く → ホストが確定（ホストが応答しなければ config.friend.forfeitConfirmWaitMs 後にゲスト端末だけで負けとして終える）。中止もホストだけが書き、ホスト不在時はゲスト端末の中だけで中止
 - `?profile=xxx` で端末を分けられる（clientId・戦績キー・参加中の部屋）。2画面テスト用
 
 ## 主要ファイル
 - `src/match/`：session.js・cpuSession.js・referee.js・friendRoom.js・friendSession.js・identity.js
 - `src/net/`：roomStore.js（取り決め・LocalRoomStore・loadRoomStore()）、firebase.js（SDK 12.19.0 読み込み・匿名ログイン）、firebaseRoomStore.js、delayedRoomStore.js（?latency= テスト用）、firebaseConfig.js（設定値）
-- `database.rules.json`（アクセスルール。コンソールに貼る）。rounds/{n} には親の .write を置かず、schedule / prompt / result はホスト、answers/{side} は本人だけ
+- `database.rules.json`（アクセスルール。コンソールに貼る）。rounds/{n} には親の .write を置かず、schedule / prompt / result はホスト、answers/{side} は本人だけ。ゲストが書けるのは自分の players・answers・signals/forfeit/guest だけ
 - `tests/rulesEval.js`（ルールの簡易評価器。公式エミュレーターの代わり）・`tests/rules.test.js`
 - `src/ui/`：battleScreen.js（表示のみ）・friendLobbyScreen.js・resultScreen.js（mode 別）・recordScreen.js
 - `tests/friend.test.js`（部屋・同期・切断）、`tests/e2e/`（input / cpu / friend / rejoin）
@@ -36,7 +37,7 @@
 - 実機2台で確認 → MOBILE_CHECKLIST にフレンド戦の項目を追加 → push・公開
 
 ## 注意点
-- テストはブラウザで実行（`/tests/` ロジック 193件、`/tests/e2e/` 操作：input / cpu / friend / rejoin / abort。全部で約3分）
+- テストはブラウザで実行（`/tests/` ロジック 214件、`/tests/e2e/` 操作：input / cpu / friend / rejoin / abort。全部で約3分）
 - e2e の iframe は ?profile= ごとに別の Firebase アプリ名で初期化される → 別の匿名ユーザーになる
 - 設定値が null のままだとロビーは通信なし版（注意書きが出る）。公開前に設定値を入れて Firebase で確認すること
 - 部屋データの古いもの（kotodama.room:*）は自動削除しない（Firebase 版で要検討）

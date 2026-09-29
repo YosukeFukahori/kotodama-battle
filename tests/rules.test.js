@@ -135,18 +135,68 @@ test('ルール追加：回答は1回だけ（送信後に自分でも書き換�
   assert.equal(e.set(first.db, GUEST, `${ROOM}/rounds/1/answers/guest`, answer('あたため')).ok, false);
 });
 
-test('ルール追加：ゲストは「やめる」（ホストの勝ち）と中止だけ書ける', async () => {
+// ---------- 試合状態・勝敗の確定はホストだけ（降参リクエスト） ----------
+
+test('確定1：ゲストは meta.status を直接変更できない', async () => {
   const e = await engine();
-  const forfeit = e.update(playingDb(), GUEST, ROOM, {
+  for (const status of ['finished', 'aborted', 'closed', 'waiting']) {
+    assert.equal(e.set(playingDb(), GUEST, `${ROOM}/meta/status`, status).ok, false, status);
+  }
+});
+
+test('確定2：ゲストは match.status を直接変更できない', async () => {
+  const e = await engine();
+  for (const status of ['finished', 'aborted', 'playing']) {
+    assert.equal(e.set(playingDb(), GUEST, `${ROOM}/match/status`, status).ok, false, status);
+  }
+});
+
+test('確定3：ゲストは match.result を直接変更できない（自分の負けの形でも）', async () => {
+  const e = await engine();
+  assert.equal(e.set(playingDb(), GUEST, `${ROOM}/match/result`, { outcome: 'host', reason: 'forfeit', decidedRound: 1 }).ok, false, '降参の形');
+  assert.equal(e.set(playingDb(), GUEST, `${ROOM}/match/result`, { outcome: 'guest', reason: 'ko' }).ok, false, '自分の勝ち');
+  const oldStyle = e.update(playingDb(), GUEST, ROOM, { 'match/status': 'finished', 'match/result': { outcome: 'host', reason: 'forfeit' }, 'meta/status': 'finished' });
+  assert.equal(oldStyle.ok, false, '以前の方式（ゲストが直接確定）');
+});
+
+test('確定4：ゲストは自分の降参リクエスト（signals/forfeit/guest）を書ける（1回だけ）', async () => {
+  const e = await engine();
+  const r = e.set(playingDb(), GUEST, `${ROOM}/signals/forfeit/guest`, { at: NOW, round: 1 });
+  assert.ok(r.ok, r.why);
+  assert.equal(e.set(r.db, GUEST, `${ROOM}/signals/forfeit/guest`, null).ok, false, '取り消し・書き換えはできない');
+});
+
+test('確定5：ホストは降参リクエストを検知してゲストの敗北を確定できる', async () => {
+  const e = await engine();
+  const signaled = e.set(playingDb(), GUEST, `${ROOM}/signals/forfeit/guest`, { at: NOW, round: 1 }).db;
+  const confirm = e.update(signaled, HOST, ROOM, {
     'match/status': 'finished',
     'match/result': { outcome: 'host', reason: 'forfeit', decidedRound: 1 },
     'meta/status': 'finished',
   });
-  assert.ok(forfeit.ok, `${forfeit.path}: ${forfeit.why}`);
-  const abort = e.update(playingDb(), GUEST, ROOM, { 'match/status': 'aborted', 'meta/status': 'aborted' });
-  assert.ok(abort.ok, `${abort.path}: ${abort.why}`);
-  assert.equal(e.set(playingDb(), GUEST, `${ROOM}/match/status`, 'playing').ok, false, 'ゲストが試合状態を戻す');
-  assert.equal(e.set(playingDb(), GUEST, `${ROOM}/match/result`, { outcome: 'guest', reason: 'forfeit' }).ok, false, 'ホストの「やめる」を偽装');
+  assert.ok(confirm.ok, `${confirm.path}: ${confirm.why}`);
+});
+
+test('確定6：第三者は降参リクエストを書けない', async () => {
+  const e = await engine();
+  assert.equal(e.set(playingDb(), OTHER, `${ROOM}/signals/forfeit/guest`, { at: NOW }).ok, false);
+  assert.equal(e.set(playingDb(), null, `${ROOM}/signals/forfeit/guest`, { at: NOW }).ok, false, '未ログイン');
+});
+
+test('確定7：ホストはゲストの降参リクエストを偽装できない', async () => {
+  const e = await engine();
+  assert.equal(e.set(playingDb(), HOST, `${ROOM}/signals/forfeit/guest`, { at: NOW }).ok, false, 'guest の降参');
+  assert.equal(e.set(playingDb(), HOST, `${ROOM}/signals/forfeit/host`, { at: NOW }).ok, false, '別の枠');
+  assert.equal(e.set(playingDb(), GUEST, `${ROOM}/signals/other`, { x: 1 }).ok, false, 'signals の他の項目');
+});
+
+test('確定8：切断20秒後の中止（aborted）はホストだけが書ける', async () => {
+  const e = await engine();
+  const abort = { 'match/status': 'aborted', 'meta/status': 'aborted' };
+  const byHost = e.update(playingDb(), HOST, ROOM, abort);
+  assert.ok(byHost.ok, `${byHost.path}: ${byHost.why}`);
+  assert.equal(e.update(playingDb(), GUEST, ROOM, abort).ok, false, 'ゲスト');
+  assert.equal(e.update(playingDb(), OTHER, ROOM, abort).ok, false, '第三者');
 });
 
 test('ルール追加：第三者は他人の部屋を書き換えられない・期限切れの部屋だけ削除できる', async () => {
