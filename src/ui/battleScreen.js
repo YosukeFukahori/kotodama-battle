@@ -4,13 +4,16 @@ import { planCpuAnswer } from '../cpu/cpuAI.js';
 import { createBattle, resolveRound, forfeit } from '../core/battle.js';
 import { judgeAnswer } from '../core/judge.js';
 import { normalizeReading } from '../core/kana.js';
+import { scheduleRound, delayFight, nextRoundAt } from '../core/roundSchedule.js';
+import { longWordCallout } from '../core/effects.js';
 import { getGameData } from '../dictionary/setup.js';
 import { rejectMessage } from '../dictionary/wordValidator.js';
 import { getStore } from '../storage/storage.js';
 import { h, button } from './dom.js';
 
 // バトル画面（docs/SPEC.md §3）。
-// 進行：イントロ →［出題準備 → 回答受付 → 判定タイム → 結果表示］× N → 結果画面
+// 進行：説明 →［ROUND → READY → FIGHT!（お題表示・回答受付）→ 判定タイム（3秒）］× N → 結果画面
+// 各段階の時刻は core/roundSchedule.js の時刻表で決める（将来の対人戦で両者のタイミングを揃えるため）。
 // ゲームのルール（攻撃順・ダメージ・決着）は core/battle.js、判定は core/judge.js に任せ、
 // この画面はタイマー・入力・表示だけを受け持つ。
 
@@ -37,6 +40,7 @@ export const battleScreen = {
     }
 
     const timeLimitMs = CONFIG.battle.timeLimitSec * 1000;
+    const timing = CONFIG.battle.timing;
     const names = { player: 'あなた', opponent: `CPU（${cpu.label}）` };
     const shortNames = { player: 'あなた', opponent: 'CPU' };
     const data = getGameData();
@@ -47,7 +51,7 @@ export const battleScreen = {
     });
     let started = false;
     let disposed = false;
-    let phase = 'intro'; // intro | preparing | answering | judging | revealed | finished
+    let phase = 'lobby'; // lobby | intro（ROUND/READY）| answering | judging | revealed | finished
     let round = null;    // { prompt, startedAt, answers: { player, opponent } }
     let lastPrompt = null;
     let decidedRound = 0; // 何問目で決着したか
@@ -60,6 +64,8 @@ export const battleScreen = {
       const id = setTimeout(() => { timers.delete(id); fn(); }, ms);
       timers.add(id);
     };
+    // 指定時刻（performance.now() 基準）まで待つ。画面を離れたら（タイマーが消されたら）二度と解決しない
+    const sleepUntil = (at) => new Promise((resolve) => later(resolve, Math.max(0, at - performance.now())));
     const clearTimers = () => {
       for (const id of timers) clearTimeout(id);
       timers.clear();
@@ -85,6 +91,8 @@ export const battleScreen = {
 
     const roundLabel = h('span', { class: 'battle-bar__round' }, '');
     const promptBox = h('div', { class: 'prompt', 'aria-live': 'polite' });
+    const banner = h('div', { class: 'round-banner', hidden: true, 'aria-live': 'assertive' });
+    const stage = h('div', { class: 'stage' }, promptBox, banner);
     const timerFill = h('div', { class: 'timer__fill' });
     const timerSec = h('span', { class: 'timer__sec' }, CONFIG.battle.timeLimitSec.toFixed(1));
     const timer = h('div', { class: 'timer' }, h('div', { class: 'timer__bar' }, timerFill), timerSec);
@@ -128,7 +136,7 @@ export const battleScreen = {
     );
 
     const answerArea = h('div', { class: 'answer-area', hidden: true },
-      promptBox, timer, statusRow, form,
+      stage, timer, statusRow, form,
     );
 
     const view = h('section', { class: 'screen screen--battle' },
@@ -167,6 +175,27 @@ export const battleScreen = {
         statusView[side].textContent = `${shortNames[side]} ${text}`;
         statusView[side].classList.toggle('is-done', status === 'answered');
       }
+    }
+
+    /** ROUND / READY の間は、お題の代わりに伏せ字を出す（先読みさせない） */
+    function renderHiddenPrompt() {
+      promptBox.replaceChildren(
+        h('span', { class: 'prompt__char prompt__char--hidden' }, '？'),
+        h('span', { class: 'prompt__text' }, 'から始まり'),
+        h('span', { class: 'prompt__char prompt__char--hidden' }, '？'),
+        h('span', { class: 'prompt__text' }, 'で終わる言葉'),
+      );
+    }
+
+    /** ROUND n / READY / FIGHT! の表示。kind で見た目を変える（fight はお題に重ならない位置に出てすぐ消える） */
+    function showBanner(text, kind) {
+      banner.textContent = text;
+      banner.className = `round-banner round-banner--${kind}`;
+      banner.hidden = false;
+    }
+
+    function hideBanner() {
+      banner.hidden = true;
     }
 
     function renderPrompt(prompt) {
@@ -262,44 +291,76 @@ export const battleScreen = {
       startRound();
     }
 
+    /** お題を決め、判定に必要な辞書データを読み込む。失敗したら null。 */
+    async function preparePrompt() {
+      const pool = await prepareData();
+      const prompt = pool?.next({ avoid: lastPrompt });
+      if (!prompt) return null;
+      // 判定タイムで辞書の読み込み失敗が起きないよう、回答受付の前に読み込んでおく
+      const ok = await data.official.preload(prompt).then(() => true, () => false);
+      return ok ? { pool, prompt } : null;
+    }
+
     async function startRound() {
-      phase = 'preparing';
+      phase = 'intro';
+      clearTimers();
       judgePanel.hidden = true;
-      // ユーザー操作の中でフォーカスしておくと、スマホでキーボードが開いたままになる
+      round = null;
       input.value = '';
-      input.readOnly = false;
-      input.focus({ preventScroll: true });
+      input.readOnly = true;
       submitButton.textContent = '回答する';
       updateSubmitState();
-      roundLabel.textContent = ` 第${battle.round + 1}問`;
-      store.setActiveRound(battle.round + 1);
-      promptBox.replaceChildren(h('span', { class: 'prompt__text' }, 'お題を準備中…'));
+      statusRow.hidden = true;
+      renderHiddenPrompt();
       renderTimer(0);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
 
-      const pool = await prepareData();
+      const roundNo = battle.round + 1;
+      roundLabel.textContent = ` 第${roundNo}問`;
+      store.setActiveRound(roundNo);
+
+      const schedule = scheduleRound(performance.now(), timing, timeLimitMs);
+      const preparing = preparePrompt(); // ROUND / READY の間に裏で準備する（画面には出さない）
+
+      showBanner(`ROUND ${roundNo}`, 'round');
+      await sleepUntil(schedule.readyAt);
       if (disposed) return;
-      const prompt = pool?.next({ avoid: lastPrompt });
-      // 判定タイムで辞書の読み込み失敗が起きないよう、回答受付の前に必要なデータを読み込んでおく
-      const ready = prompt && await data.official.preload(prompt).then(() => true, () => false);
+
+      showBanner('READY', 'ready');
+      const prepared = await preparing;
+      await sleepUntil(schedule.fightAt);
       if (disposed) return;
-      if (!ready) {
+
+      if (!prepared) {
+        hideBanner();
         promptBox.replaceChildren(
           h('span', { class: 'prompt__text' }, '辞書を読み込めませんでした'),
           button('再試行', () => startRound(), { variant: 'secondary', small: true }),
         );
         return;
       }
+      // 読み込みが READY に間に合わなかった場合は、その分だけ FIGHT を遅らせる
+      beginAnswering(prepared, delayFight(schedule, performance.now(), timeLimitMs, timing));
+    }
 
+    /** FIGHT!：お題表示・入力可・15秒タイマー開始・CPU回答タイマー開始を同時に行う */
+    function beginAnswering({ pool, prompt }, schedule) {
       lastPrompt = prompt;
       const cpuPlan = planCpuAnswer(cpu, pool.candidates(prompt), { timeLimitMs, avoid: cpuUsedWords });
       if (cpuPlan.status === 'answered') cpuUsedWords.add(cpuPlan.input);
-      round = { prompt, answers: { player: null, opponent: null }, startedAt: 0 };
-      renderPrompt(prompt);
-      renderStatus();
 
+      round = { prompt, answers: { player: null, opponent: null }, startedAt: performance.now() };
+      renderPrompt(prompt);
+      statusRow.hidden = false;
+      renderStatus();
       phase = 'answering';
-      round.startedAt = performance.now();
+      input.readOnly = false;
+      // Android などではキーボードが開く。iOS は利用者の操作なしでは開かないので、入力欄をタップしてもらう
+      input.focus({ preventScroll: true });
       updateSubmitState();
+
+      showBanner('FIGHT!', 'fight');
+      later(hideBanner, schedule.fightEndAt - schedule.fightAt);
 
       if (cpuPlan.status === 'answered') {
         later(() => {
@@ -360,6 +421,13 @@ export const battleScreen = {
       renderHp();
       renderJudgement({ player, opponent }, outcome);
       phase = battle.result ? 'finished' : 'revealed';
+
+      // 判定タイムは固定時間表示し、自動で次へ進む（スキップなし）
+      const revealAt = performance.now();
+      later(() => {
+        if (battle.result) goToResult();
+        else startRound();
+      }, nextRoundAt(revealAt, timing) - revealAt);
     }
 
     function renderJudgement(judged, outcome) {
@@ -390,12 +458,14 @@ export const battleScreen = {
           }
           detail = h('p', { class: 'judge-card__effect' }, effect);
         }
+        const callout = j.status === 'answered' && j.valid ? longWordCallout(j.length) : null;
 
         return h('article', { class: `judge-card judge-card--${side}` },
           h('header', { class: 'judge-card__head' },
             h('span', { class: 'judge-card__name' }, names[side]),
             badge,
           ),
+          callout && h('p', { class: `callout callout--${callout.level}` }, callout.text),
           j.status === 'answered' && h('p', { class: 'judge-card__word' }, j.surface || '（空）'),
           j.status === 'answered' && h('p', { class: 'judge-card__meta' },
             `${j.reading ? `${j.reading}・` : ''}${lengthText(j, attack)}・${formatSec(j.timeMs)}`),
@@ -411,18 +481,20 @@ export const battleScreen = {
         default: summary = `どちらも攻撃なし（${battle.noAttackStreak}/${battle.drawAfterNoAttackRounds}）`;
       }
 
-      const next = battle.result
-        ? button('結果を見る', goToResult)
-        : button('次のお題へ', () => startRound());
+      // 次のラウンド（決着なら結果画面）までの残り時間。操作はできない
+      const progress = h('div', { class: 'judge__next' },
+        h('span', { class: 'judge__next-label' }, battle.result ? 'まもなく結果へ' : '次のラウンドへ'),
+        h('div', { class: 'judge__next-bar' },
+          h('div', { class: 'judge__next-fill', style: { animationDuration: `${timing.revealMs}ms` } })),
+      );
 
       judgePanel.replaceChildren(
         h('h2', { class: 'judge__title' }, '判定タイム'),
         h('p', { class: 'judge__summary' }, summary),
         h('div', { class: 'judge__cards' }, card('player'), card('opponent')),
-        next,
+        progress,
       );
       judgePanel.hidden = false;
-      next.focus({ preventScroll: true });
       judgePanel.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     }
 
@@ -453,7 +525,7 @@ export const battleScreen = {
       if (!window.confirm('バトルをやめると負けになります。やめますか？')) return;
       clearTimers();
       // 出題中・判定中なら、その問題で決着したことにする
-      decidedRound = ['preparing', 'answering', 'judging'].includes(phase) ? battle.round + 1 : battle.round;
+      decidedRound = ['intro', 'answering', 'judging'].includes(phase) ? battle.round + 1 : battle.round;
       phase = 'finished';
       battle = forfeit(battle, 'player');
       recordResult();

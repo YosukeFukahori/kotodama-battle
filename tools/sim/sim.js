@@ -18,6 +18,14 @@ import { toWordEntry } from '../../src/dictionary/wordEntry.js';
 
 /** 人間のプレイヤーのモデル。回答時間 ＝ 考える時間 ＋ (探す時間 ＋ 入力時間) × 文字数 */
 export const PLAYER_MODELS = {
+  blitz: {
+    label: '超即答型（2〜3文字を1秒前後で出す）',
+    thinkSec: { mean: 0.8, sd: 0.3, min: 0.4 },
+    secPerChar: 0.25,
+    wordLength: { mean: 2.5, sd: 0.5 },
+    timeoutRate: 0.02,
+    invalidRate: 0.05,
+  },
   casual: {
     label: 'ふつうの人',
     thinkSec: { mean: 4.5, sd: 1.8, min: 1.8 },
@@ -34,8 +42,16 @@ export const PLAYER_MODELS = {
     timeoutRate: 0.03,
     invalidRate: 0.05,
   },
+  longReal: {
+    label: '長文狙い・現実的（長い言葉を探すが、思いつかない・間違えることも多い）',
+    thinkSec: { mean: 5.5, sd: 2.2, min: 2.5 },
+    secPerChar: 0.8,
+    wordLength: { mean: 9, sd: 2.5 },
+    timeoutRate: 0.1,
+    invalidRate: 0.15,
+  },
   long: {
-    label: '長文型（時間を使って長い言葉を出す）',
+    label: '長文型・上級者（時間を使って長い言葉を確実に出す）',
     thinkSec: { mean: 4.5, sd: 1.8, min: 2.0 },
     secPerChar: 0.7,
     wordLength: { mean: 11, sd: 2.5 },

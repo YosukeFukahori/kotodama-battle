@@ -69,3 +69,46 @@ test('上限は config で変更できる', () => {
     calcDamage({ length: 10, timeMs: 7500, timeLimitMs: LIMIT }, p10),
   );
 });
+
+// ---------- 採用中の式（config.js）：長い言葉ほど加速度的に増える ----------
+
+test('採用中の式：文字数・秒数ごとのダメージ（SPEC §3.4 の表と一致）', () => {
+  const d = (length, sec) => calcDamage({ length, timeMs: sec * 1000, timeLimitMs: LIMIT });
+  assert.equal(d(2, 1), 10);
+  assert.equal(d(3, 1), 12);
+  assert.equal(d(5, 5), 15);
+  assert.equal(d(8, 8), 20);
+  assert.equal(d(10, 10), 24);
+  assert.equal(d(15, 12), 37);
+  assert.equal(d(20, 13), 54);
+});
+
+test('採用中の式：2〜3文字を1秒前後で答えても 10〜12 ダメージ程度', () => {
+  for (const length of [2, 3]) {
+    for (const sec of [0.5, 1, 1.5]) {
+      const dmg = calcDamage({ length, timeMs: sec * 1000, timeLimitMs: LIMIT });
+      assert.ok(dmg >= 10 && dmg <= 12, `${length}文字 ${sec}秒 → ${dmg}`);
+    }
+  }
+});
+
+test('採用中の式：1文字増えるごとの増え幅が大きくなる（加速度的）', () => {
+  let prevGain = -Infinity;
+  for (let length = 3; length <= 20; length += 1) {
+    const gain = lengthMultiplier(length) - lengthMultiplier(length - 1);
+    assert.ok(gain > prevGain, `${length}文字で増え幅が減った`);
+    prevGain = gain;
+  }
+});
+
+test('採用中の式：速さより長さの影響が大きい（同じ時間なら長いほうが、即答の短い言葉より強い）', () => {
+  const quickShort = calcDamage({ length: 3, timeMs: 1000, timeLimitMs: LIMIT });
+  const slowLong = calcDamage({ length: 10, timeMs: 12000, timeLimitMs: LIMIT });
+  assert.ok(slowLong >= quickShort * 1.8, `即答3文字 ${quickShort} / 12秒10文字 ${slowLong}`);
+});
+
+test('採用中の式：20文字を超えても20文字分で計算', () => {
+  const d = (length) => calcDamage({ length, timeMs: 13000, timeLimitMs: LIMIT });
+  assert.equal(d(25), d(20));
+  assert.equal(d(60), d(20));
+});

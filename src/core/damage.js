@@ -9,12 +9,16 @@ export function damageLength(length, params = CONFIG.damage) {
   return Math.min(length, params.maxDamageLength ?? Infinity);
 }
 
-/** 長さ補正。ダメージ計算用文字数が最小文字数ちょうどで 1。 */
+/**
+ * 文字数補正 = lengthBase + n × lengthCoef + n² × lengthQuadCoef
+ * （n = ダメージ計算用文字数 - minLength。最小文字数未満は 0 とみなす）
+ */
 export function lengthMultiplier(length, params = CONFIG.damage) {
-  return 1 + Math.max(0, damageLength(length, params) - params.minLength) * params.lengthCoef;
+  const n = Math.max(0, damageLength(length, params) - params.minLength);
+  return (params.lengthBase ?? 1) + n * params.lengthCoef + n * n * (params.lengthQuadCoef ?? 0);
 }
 
-/** 時間補正。0秒で maxTimeMul、制限時間ちょうどで minTimeMul。 */
+/** 速度補正。0秒で maxTimeMul、制限時間ちょうどで minTimeMul（直線）。 */
 export function timeMultiplier(timeMs, timeLimitMs, params = CONFIG.damage) {
   const ratio = Math.min(1, Math.max(0, timeMs / timeLimitMs));
   return params.maxTimeMul - ratio * (params.maxTimeMul - params.minTimeMul);

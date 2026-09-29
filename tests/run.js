@@ -16,6 +16,8 @@ import './battle.test.js';
 import './judge.test.js';
 import './cpuAI.test.js';
 import './storage.test.js';
+import './roundSchedule.test.js';
+import './effects.test.js';
 
 const results = await runAll();
 const failed = results.filter((r) => !r.ok);
