@@ -9,7 +9,7 @@
 - 4：通信なしのフレンド戦（LocalRoomStore ＋ FriendSession）
 - 5：ロビー UI（部屋作成・6桁コード・参加・準備OK）、再読み込みからの自動復帰、2画面の操作テスト
 - 手順6：Firebase 接続完了（プロジェクト kotodama-battle、RTDB asia-southeast1、匿名認証、ルール公開済み）。設定値は src/net/firebaseConfig.js。本物の Firebase で e2e（friend / rejoin / abort / 遅延あり）と実ルールテスト（tests/live/、35件）が通過
-- 未 push（最後の push は 04410bd まで。公開版に Ver.0.2 はまだ出ていない）
+- 手順7：Ver.0.2 公開（README・MOBILE_CHECKLIST をフレンド戦に合わせて更新、全テスト通過後に main へ push → GitHub Pages に公開）
 
 ## 重要な設計判断
 - セッションの取り決めとイベント一覧は `src/match/session.js` 冒頭が正本。イベントは常に「自分 = player、相手 = opponent」視点
@@ -31,8 +31,8 @@
 - `tests/friend.test.js`（部屋・同期・切断）、`tests/e2e/`（input / cpu / friend / rejoin）
 
 ## 次にやること
-- 実機2台（別回線）でフレンド戦を確認 → MOBILE_CHECKLIST にフレンド戦の項目を追加
-- push 前の確認（下の注意点）→ push・公開（ユーザーの指示を待つ）
+- 実機2台（別回線）でフレンド戦を確認（docs/MOBILE_CHECKLIST.md の F1〜F20）
+- 以降の push はユーザーの指示を待つ
 
 ## 注意点
 - テストはブラウザで実行（`/tests/` ロジック 214件、`/tests/e2e/` 操作：input / cpu / friend / rejoin / abort。全部で約3分）
