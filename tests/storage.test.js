@@ -190,3 +190,44 @@ test('勝率は 勝ち ÷ 全試合（引き分けを含む）、0試合なら n
   assert.equal(winRate({ wins: 1, losses: 2, draws: 1 }), 0.25);
   assert.equal(winRate({ wins: 3, losses: 0, draws: 0 }), 1);
 });
+
+// ---------- フレンド戦（Ver.0.2） ----------
+
+test('friend の戦績・履歴は cpu / ranked と分けて保存し、レートは変えない', () => {
+  const store = createStore(memoryStorage({ [KEY]: JSON.stringify({ ...createDefaultSave(), rating: { ranked: 1500 } }) }));
+  store.beginMatch({ mode: 'friend', opponentName: 'たろう' });
+  const entry = store.finishMatch({ outcome: 'win', reason: 'ko', rounds: 6 });
+  const save = store.load();
+  assert.deepEqual(save.record.friend, { wins: 1, losses: 0, draws: 0 });
+  assert.deepEqual(save.record.cpu, { wins: 0, losses: 0, draws: 0 });
+  assert.equal(save.history.friend.length, 1);
+  assert.equal(entry.opponentName, 'たろう');
+  assert.equal(save.rating.ranked, 1500);
+});
+
+test('過去データに friend が無くても既定値で補う（互換性）', () => {
+  const old = { version: 1, rating: { ranked: null }, record: { cpu: { wins: 3, losses: 1, draws: 0 }, ranked: { wins: 0, losses: 0, draws: 0 } }, history: { cpu: [], ranked: [] }, activeMatch: null };
+  const save = createStore(memoryStorage({ [KEY]: JSON.stringify(old) })).load();
+  assert.deepEqual(save.record.friend, { wins: 0, losses: 0, draws: 0 });
+  assert.deepEqual(save.history.friend, []);
+  assert.deepEqual(save.record.cpu, { wins: 3, losses: 1, draws: 0 });
+});
+
+test('フレンド戦の途中離脱は、次回起動時に負けとして記録しない（フラグだけ下ろす）', () => {
+  const storage = memoryStorage();
+  createStore(storage).beginMatch({ mode: 'friend', opponentName: 'はなこ' });
+  assert.equal(createStore(storage).recoverAbandonedMatch(), null);
+  const save = createStore(storage).load();
+  assert.equal(save.activeMatch, null);
+  assert.deepEqual(save.record.friend, { wins: 0, losses: 0, draws: 0 });
+});
+
+test('試合中止（cancelMatch）は勝敗を記録しない', () => {
+  const store = createStore();
+  store.beginMatch({ mode: 'friend' });
+  store.cancelMatch();
+  const save = store.load();
+  assert.equal(save.activeMatch, null);
+  assert.deepEqual(save.record.friend, { wins: 0, losses: 0, draws: 0 });
+  assert.equal(store.finishMatch({ outcome: 'win', reason: 'ko', rounds: 1 }), null, '中止後は記録できない');
+});

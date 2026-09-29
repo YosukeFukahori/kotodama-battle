@@ -1,6 +1,7 @@
 // セーブデータ（localStorage）の読み書き（docs/SPEC.md §3.5・§6・§7.2）。DOM に依存しない。
 //
-// - 戦績・履歴はモード（'cpu' / 将来 'ranked'）ごとに分けて持つ
+// - 戦績・履歴はモード（'cpu' / 'friend' / 将来 'ranked'）ごとに分けて持つ
+// - レーティングを変えるのは ranked だけ（このモジュールは rating を書き換えない）
 // - CPU戦ではレーティングを一切変更しない（このモジュールは rating を書き換えない）
 // - 途中離脱は「進行中フラグ（activeMatch）」で判定する：
 //     バトル開始で立て、決着で記録と同時に下ろす。起動時に残っていれば敗北として1回だけ記録する
@@ -8,7 +9,11 @@
 
 import { CONFIG } from '../config.js';
 
-export const MODES = Object.freeze(['cpu', 'ranked']);
+export const MODES = Object.freeze(['cpu', 'friend', 'ranked']);
+
+// 途中離脱（進行中フラグが残ったまま次回起動）を負けとして記録するか。
+// フレンド戦は復帰待ち・中止で扱うため記録しない（docs/SPEC.md §10.5）
+const ABANDON_IS_LOSS = Object.freeze({ cpu: true, friend: false, ranked: true });
 const OUTCOME_FIELD = Object.freeze({ win: 'wins', lose: 'losses', draw: 'draws' });
 
 function emptyRecord() {
@@ -19,8 +24,8 @@ export function createDefaultSave() {
   return {
     version: CONFIG.storage.schemaVersion,
     rating: { ranked: null },
-    record: { cpu: emptyRecord(), ranked: emptyRecord() },
-    history: { cpu: [], ranked: [] },
+    record: { cpu: emptyRecord(), friend: emptyRecord(), ranked: emptyRecord() },
+    history: { cpu: [], friend: [], ranked: [] },
     activeMatch: null,
   };
 }
@@ -43,6 +48,7 @@ function normalizeActiveMatch(raw) {
     cpuId: typeof raw.cpuId === 'string' ? raw.cpuId : null,
     startedAt: typeof raw.startedAt === 'string' ? raw.startedAt : '',
     round: count(raw.round),
+    opponentName: typeof raw.opponentName === 'string' ? raw.opponentName : null,
   };
 }
 
@@ -115,10 +121,18 @@ export class SaveStore {
   }
 
   /** バトル開始：進行中フラグを立てる。 */
-  beginMatch({ mode, cpuId = null }) {
+  beginMatch({ mode, cpuId = null, opponentName = null }) {
     if (!MODES.includes(mode)) throw new Error(`Unknown mode: ${mode}`);
     const save = this.load();
-    save.activeMatch = { mode, cpuId, startedAt: this.#now().toISOString(), round: 0 };
+    save.activeMatch = { mode, cpuId, startedAt: this.#now().toISOString(), round: 0, opponentName };
+    this.#write(save);
+  }
+
+  /** 試合中止：勝敗を記録せずに進行中フラグを下ろす（フレンド戦の切断中止など）。 */
+  cancelMatch() {
+    const save = this.load();
+    if (!save.activeMatch) return;
+    save.activeMatch = null;
     this.#write(save);
   }
 
@@ -153,6 +167,12 @@ export class SaveStore {
     const save = this.load();
     const match = save.activeMatch;
     if (!match) return null;
+    if (!ABANDON_IS_LOSS[match.mode]) {
+      // 負けとして記録しないモード（フレンド戦）は、フラグを下ろすだけ
+      save.activeMatch = null;
+      this.#write(save);
+      return null;
+    }
     const entry = this.#record(save, match, { outcome: 'lose', reason: 'abandon', rounds: match.round });
     save.activeMatch = null;
     this.#write(save);
@@ -166,6 +186,7 @@ export class SaveStore {
       at: this.#now().toISOString(),
       mode: match.mode,
       cpuId: match.cpuId,
+      ...(match.opponentName ? { opponentName: match.opponentName } : {}),
       outcome,
       reason,
       rounds: count(rounds),

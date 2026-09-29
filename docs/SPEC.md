@@ -271,7 +271,8 @@ n = min(読みの文字数, MAX_DAMAGE_LENGTH) - 2        // MAX_DAMAGE_LENGTH =
   },
   record: {
     cpu:    { wins: 0, losses: 0, draws: 0 },
-    ranked: { wins: 0, losses: 0, draws: 0 }   // Ver.0.1 未使用
+    friend: { wins: 0, losses: 0, draws: 0 },  // Ver.0.2 フレンド戦（レート変動なし）
+    ranked: { wins: 0, losses: 0, draws: 0 }   // 将来用。未使用
   },
   history: {            // 直近30試合。新しい順
     cpu: [
@@ -284,14 +285,15 @@ n = min(読みの文字数, MAX_DAMAGE_LENGTH) - 2        // MAX_DAMAGE_LENGTH =
         rounds: 8                         // 何問目で決着したか
       }
     ],
-    ranked: []                            // Ver.0.1 未使用
+    friend: [],                           // フレンド戦（エントリに opponentName を持つ）
+    ranked: []                            // 将来用。未使用
   },
   activeMatch: null     // 進行中フラグ（§3.5）。例：{ mode: "cpu", cpuId: "normal", startedAt: "…", round: 3 }
 }
 ```
 
 - `rounds`：決着した問題の番号。「やめる」の場合は、出題中なら出題中の問題番号、判定結果の表示中ならその問題番号。途中離脱の場合は最後に始まった問題番号（1問目の出題前なら0）
-- 読み込んだデータが壊れている・形式が違う場合は、読める項目だけ残して既定値で補う
+- 読み込んだデータが壊れている・形式が違う場合は、読める項目だけ残して既定値で補う（friend が無い過去データも既定値で補う）
 - localStorage が使えない環境（プライベートモード等）でも遊べるよう、保存に失敗してもゲームは続行する（その場合、戦績はページを閉じるまでしか残らない）
 
 ### 7.3 CPU定義
