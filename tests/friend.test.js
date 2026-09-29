@@ -7,6 +7,7 @@ import { WordValidator } from '../src/dictionary/wordValidator.js';
 import { SaveStore } from '../src/storage/storage.js';
 import { CONFIG } from '../src/config.js';
 import { memoryOfficial } from './fakes.js';
+import { DelayedRoomStore } from '../src/net/delayedRoomStore.js';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -244,4 +245,50 @@ test('フレンド戦：相手の接続が途絶えたら接続待ちを通知�
   assert.deepEqual(save.record.friend, { wins: 0, losses: 0, draws: 0 });
   assert.equal(save.activeMatch, null);
   assert.equal((await store.get(roomPath(code))).match.status, 'aborted');
+});
+
+test('通信遅延の包み：書き込みと通知が遅れ、順序は保たれる', async () => {
+  const inner = newStore();
+  const store = new DelayedRoomStore(inner, { latencyMs: 80 });
+  const seen = [];
+  store.subscribe('rooms/1/v', (v) => seen.push([v, performance.now()]));
+  await sleep(120);
+  const t0 = performance.now();
+  store.set('rooms/1/v', 1);
+  store.set('rooms/1/v', 2);
+  await sleep(40);
+  assert.equal(await inner.get('rooms/1/v'), null, '書き込みはまだ届かない');
+  await sleep(250);
+  assert.deepEqual(seen.map(([v]) => v), [null, 1, 2], '書いた順に通知される');
+  assert.ok(seen.at(-1)[1] - t0 >= 150, `書き込み＋通知で約160ms遅れる（${Math.round(seen.at(-1)[1] - t0)}ms）`);
+});
+
+test('フレンド戦：相手の connected が false（Firebase の onDisconnect）なら、すぐ接続待みにして復帰待ち超過で中止', async () => {
+  const store = newStore();
+  const data = fakeData();
+  const rules = fastRules();
+  rules.timeLimitMs = 5000;
+  rules.friend = { ...rules.friend, disconnectAfterMs: 5000, reconnectWaitMs: 500 };
+  const code = await createRoom(store, { clientId: 'H', name: 'H', rules });
+  await joinRoom(store, code, { clientId: 'G', name: 'G' });
+  await setReady(store, code, 'host', true);
+  await setReady(store, code, 'guest', true);
+  await startMatch(store, code, { pool: await data.promptPool });
+  const room = await store.get(roomPath(code));
+  const host = new FriendSession({ store, code, side: 'host', room, data, storage: memorySave() });
+  const events = [];
+  host.on((e) => events.push({ e, t: performance.now() }));
+  host.start();
+  await sleep(200);
+  // ゲストの端末が落ちた：サーバーが connected = false、lastSeen = 切断時刻 を書く
+  const lostAt = performance.now();
+  await store.update(roomPath(code), { 'players/guest/connected': false, 'players/guest/lastSeen': store.serverNow() });
+  const until = performance.now() + 4000;
+  while (!events.some(({ e }) => e.type === 'end') && performance.now() < until) await sleep(20);
+  host.dispose();
+  const firstNotice = events.find(({ e }) => e.type === 'connection' && !e.opponentConnected);
+  assert.ok(firstNotice && firstNotice.t - lostAt < 1300, `接続待ちの通知が lastSeen の途絶（5秒）を待たずに出る（${firstNotice && Math.round(firstNotice.t - lostAt)}ms）`);
+  const end = events.find(({ e }) => e.type === 'end');
+  assert.equal(end?.e.outcome, 'aborted');
+  assert.ok(end.t - lostAt < 2500, `復帰待ち（0.5秒）を過ぎたら中止（${Math.round(end.t - lostAt)}ms）`);
 });

@@ -4,7 +4,7 @@ import { battleScreen } from './ui/battleScreen.js';
 import { resultScreen } from './ui/resultScreen.js';
 import { recordScreen } from './ui/recordScreen.js';
 import { friendLobbyScreen } from './ui/friendLobbyScreen.js';
-import { getRoomStore } from './net/roomStore.js';
+import { loadRoomStore } from './net/roomStore.js';
 import { roomPath, isExpired } from './match/friendRoom.js';
 import { FriendSession } from './match/friendSession.js';
 import { loadCurrentRoom, saveCurrentRoom } from './match/identity.js';
@@ -60,8 +60,9 @@ const notice = abandoned
 async function resumeFriendMatch() {
   const current = loadCurrentRoom();
   if (!current) return false;
-  const store = getRoomStore();
-  const room = await store.get(roomPath(current.code)).catch(() => null);
+  // 参加中の部屋があるときだけ保存先（Firebase）を用意する。CPU戦だけ遊ぶ場合は読み込まない
+  const store = await loadRoomStore().catch(() => null);
+  const room = store ? await store.get(roomPath(current.code)).catch(() => null) : null;
   if (room?.match?.status === 'playing' && !isExpired(room, store.serverNow())) {
     navigate('battle', { session: new FriendSession({ store, code: current.code, side: current.side, room }) });
     return true;

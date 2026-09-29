@@ -6,6 +6,7 @@ import { runRoundInput } from './roundInput.js';
 import { runCpuMatch } from './cpuMatch.js';
 import { runFriendMatch } from './friendMatch.js';
 import { runFriendRejoin } from './friendRejoin.js';
+import { runFriendAbort } from './friendAbort.js';
 
 const KEYS_PREFIX = 'kotodama.';
 const frame = document.getElementById('app');
@@ -31,6 +32,7 @@ const scenarios = [
   ['cpu', runCpuMatch],
   ['friend', () => runFriendMatch(frame, frame2)],
   ['rejoin', () => runFriendRejoin(frame, frame2)],
+  ['abort', () => runFriendAbort(frame, frame2)],
 ];
 
 const saved = backupStorage();

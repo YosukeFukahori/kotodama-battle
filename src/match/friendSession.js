@@ -103,6 +103,7 @@ export class FriendSession extends BaseSession {
   #closeTimers = new Set(); // ホストが締め切りタイマーを仕掛けたラウンド
   #current = null;          // 今のラウンド { n, prompt, fightLocal, deadlineLocal, answered, oppAnswered, closed }
   #opponentConnected = true;
+  #stopPresence = null;
 
   /**
    * @param {{ store, code: string, side: 'host'|'guest', room: object, data?, storage? }} options
@@ -154,6 +155,7 @@ export class FriendSession extends BaseSession {
     this.#storage.beginMatch({ mode: 'friend', opponentName: this.opponentName });
     if (this.#side === 'host') this.#pool = await this.#data.promptPool;
     if (this.disposed) return;
+    this.#stopPresence = this.#store.trackPresence?.(`${this.#path}/players/${this.#side}`) ?? null;
     this.#heartbeat();
     this.#watchConnection();
     this.#unsubscribe = this.#store.subscribe(this.#path, (room) => this.#onRoom(room));
@@ -161,6 +163,7 @@ export class FriendSession extends BaseSession {
 
   dispose() {
     this.#unsubscribe?.();
+    this.#stopPresence?.();
     super.dispose();
   }
 
@@ -178,16 +181,17 @@ export class FriendSession extends BaseSession {
     const opp = room?.players?.[otherSide(this.#side)];
     if (opp && room.match?.status === 'playing') {
       const { disconnectAfterMs, reconnectWaitMs } = this.#rules.friend;
-      const silentFor = this.#store.serverNow() - opp.lastSeen;
-      const connected = silentFor <= disconnectAfterMs;
-      if (connected !== this.#opponentConnected) {
-        this.#opponentConnected = connected;
-        this.emit({ type: 'connection', opponentConnected: connected, waitUntil: this.#toLocal(opp.lastSeen + disconnectAfterMs + reconnectWaitMs) });
-      } else if (!connected) {
-        // 残り時間の表示を更新する
-        this.emit({ type: 'connection', opponentConnected: false, waitUntil: this.#toLocal(opp.lastSeen + disconnectAfterMs + reconnectWaitMs) });
+      const now = this.#store.serverNow();
+      // 切断の判断：Firebase の onDisconnect による connected === false（即時）か、接続確認（lastSeen）の途絶
+      const lostAt = opp.connected === false ? Math.min(opp.lastSeen, now) : opp.lastSeen + disconnectAfterMs;
+      const connected = now < lostAt;
+      const waitUntil = this.#toLocal(lostAt + reconnectWaitMs);
+      if (!connected || connected !== this.#opponentConnected) {
+        // 切断中は残り時間の表示を毎秒更新する
+        this.emit({ type: 'connection', opponentConnected: connected, waitUntil });
       }
-      if (silentFor > disconnectAfterMs + reconnectWaitMs) {
+      this.#opponentConnected = connected;
+      if (!connected && now - lostAt > reconnectWaitMs) {
         this.#store.update(this.#path, { 'match/status': 'aborted', 'meta/status': 'aborted' });
         this.#finishAborted();
         return;

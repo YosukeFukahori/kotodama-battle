@@ -4,11 +4,21 @@
 
 import { check, sleep, waitFor, buttonOf, bannerText, promptOf, wordsFor, answer } from './lib.js';
 
-const SYNC_TOL = 60;   // 2画面の表示タイミングのずれの許容（ms）
+const SYNC_TOL = 100;  // 2画面の表示タイミングのずれの許容（ms。Firebase の時刻合わせの誤差を含む）
 const GAP_TOL = 100;   // 判定表示 → 次の ROUND（3秒）の許容（ms）
 
-async function loadProfile(frame, profile) {
-  frame.src = `../../index.html?profile=${profile}`;
+/** 親ページの ?store= / ?latencyHost= / ?latencyGuest= を iframe に引き継ぐ */
+export function appQuery(profile, role) {
+  const parent = new URLSearchParams(location.search);
+  const q = new URLSearchParams({ profile });
+  if (parent.get('store')) q.set('store', parent.get('store'));
+  const latency = parent.get(role === 'host' ? 'latencyHost' : 'latencyGuest');
+  if (latency) q.set('latency', latency);
+  return `?${q}`;
+}
+
+async function loadProfile(frame, profile, role) {
+  frame.src = `../../index.html${appQuery(profile, role)}`;
   await new Promise((r) => { frame.onload = r; });
   const win = frame.contentWindow;
   await waitFor(() => win.document.querySelector('.menu .btn'));
@@ -30,15 +40,15 @@ function recordTimeline(win) {
 const firstTimes = (events, pred) => events.filter((e, i) => pred(e) && !(i > 0 && pred(events[i - 1]))).map((e) => e.t);
 
 export async function runFriendMatch(frameHost, frameGuest) {
-  const host = await loadProfile(frameHost, 'e2e-host');
-  const guest = await loadProfile(frameGuest, 'e2e-guest');
+  const host = await loadProfile(frameHost, 'e2e-host', 'host');
+  const guest = await loadProfile(frameGuest, 'e2e-guest', 'guest');
   const hd = host.document;
   const gd = guest.document;
 
   try {
     // --- ロビー：部屋を作る ---
     buttonOf(host, 'フレンド対戦').click();
-    await waitFor(() => hd.querySelector('.lobby-input'));
+    await waitFor(() => hd.querySelector('.lobby-input'), 15000);
     hd.querySelector('.lobby-input').value = 'ホストさん';
     buttonOf(host, '部屋を作る').click();
     const code = await waitFor(() => hd.querySelector('.lobby-code')?.textContent);
@@ -46,7 +56,7 @@ export async function runFriendMatch(frameHost, frameGuest) {
 
     // --- ロビー：コードで参加（名前は空欄 → 既定名） ---
     buttonOf(guest, 'フレンド対戦').click();
-    await waitFor(() => gd.querySelector('.lobby-input--code'));
+    await waitFor(() => gd.querySelector('.lobby-input--code'), 15000);
     gd.querySelector('.lobby-input--code').value = code;
     buttonOf(guest, '参加する').click();
     await waitFor(() => gd.querySelector('.lobby-code')?.textContent === code);

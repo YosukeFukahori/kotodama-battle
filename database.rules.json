@@ -1,0 +1,49 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "rooms": {
+      "$code": {
+        ".read": "auth != null",
+        ".write": "auth != null && ((!data.exists() && newData.child('players/host/id').val() === auth.uid) || (data.exists() && !newData.exists() && data.child('meta/expiresAt').val() < now))",
+        ".validate": "$code.matches(/^[0-9]{6}$/)",
+        "meta": {
+          "status": {
+            ".write": "auth != null && (root.child('rooms/' + $code + '/players/host/id').val() === auth.uid || (root.child('rooms/' + $code + '/players/guest/id').val() === auth.uid && (newData.val() === 'finished' || newData.val() === 'aborted')))"
+          }
+        },
+        "players": {
+          "host": {
+            ".write": "auth != null && data.child('id').val() === auth.uid && newData.child('id').val() === auth.uid"
+          },
+          "guest": {
+            ".write": "auth != null && ((!data.exists() && newData.child('id').val() === auth.uid && root.child('rooms/' + $code + '/players/host/id').val() !== auth.uid) || (data.child('id').val() === auth.uid && (!newData.exists() || newData.child('id').val() === auth.uid)))"
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
+        "match": {
+          ".write": "auth != null && root.child('rooms/' + $code + '/players/host/id').val() === auth.uid",
+          "status": {
+            ".write": "auth != null && root.child('rooms/' + $code + '/players/guest/id').val() === auth.uid && (newData.val() === 'finished' || newData.val() === 'aborted')"
+          },
+          "result": {
+            ".write": "auth != null && root.child('rooms/' + $code + '/players/guest/id').val() === auth.uid && newData.child('reason').val() === 'forfeit' && newData.child('outcome').val() === 'host'"
+          }
+        },
+        "rounds": {
+          "$n": {
+            ".write": "auth != null && root.child('rooms/' + $code + '/players/host/id').val() === auth.uid",
+            "answers": {
+              "$side": {
+                ".write": "auth != null && !data.exists() && root.child('rooms/' + $code + '/players/' + $side + '/id').val() === auth.uid",
+                ".validate": "$side === 'host' || $side === 'guest'"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

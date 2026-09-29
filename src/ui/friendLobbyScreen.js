@@ -1,9 +1,9 @@
 import { CONFIG } from '../config.js';
 import { getGameData } from '../dictionary/setup.js';
-import { getRoomStore, isLocalOnlyRoomStore } from '../net/roomStore.js';
+import { loadRoomStore } from '../net/roomStore.js';
 import { createRoom, joinRoom, setReady, leaveRoom, startMatch, touch, isExpired, roomPath, otherSide, RoomError, isValidRoomCode } from '../match/friendRoom.js';
 import { FriendSession } from '../match/friendSession.js';
-import { getClientId, defaultPlayerName, profileKey } from '../match/identity.js';
+import { defaultPlayerName, profileKey } from '../match/identity.js';
 import { h, button } from './dom.js';
 
 // フレンド対戦のロビー（docs/SPEC.md §10.2）：名前 → 部屋を作る／コードで参加 → 準備OK → 対戦開始。
@@ -26,8 +26,9 @@ function formatClock(ms) {
 
 export const friendLobbyScreen = {
   render({ navigate }) {
-    const store = getRoomStore();
-    const clientId = getClientId();
+    let store = null;    // フレンド対戦を開いたときに用意する（Firebase ならここで初めて SDK を読み込む）
+    let clientId = null; // Firebase 版は匿名認証の uid
+    let stopPresence = null;
     let joined = null; // { code, side }
     let unsubscribe = null;
     let heartbeatId = 0;
@@ -35,15 +36,32 @@ export const friendLobbyScreen = {
     let starting = false;
     const placeholderName = defaultPlayerName();
 
-    const body = h('div', { class: 'lobby' });
+    const body = h('div', { class: 'lobby' }, h('p', { class: 'note' }, '接続中…'));
+    const localNotice = h('p', { class: 'notice', hidden: true }, '試作版：いまは通信なしで、同じブラウザの別タブどうしでのみ対戦できます（オンライン接続は準備中）。');
     const view = h('section', { class: 'screen screen--lobby' },
       h('header', { class: 'screen-header' },
         h('h1', {}, 'フレンド対戦'),
         h('p', { class: 'note' }, '部屋コードで2人対戦。レートは変動しません。'),
-        isLocalOnlyRoomStore() && h('p', { class: 'notice' }, '試作版：いまは通信なしで、同じブラウザの別タブどうしでのみ対戦できます（オンライン接続は準備中）。'),
+        localNotice,
       ),
       body,
     );
+
+    async function connect() {
+      body.replaceChildren(h('p', { class: 'note' }, '接続中…'));
+      try {
+        store = await loadRoomStore();
+        clientId = store.clientId;
+        localNotice.hidden = !store.isLocalOnly;
+        renderEntry();
+      } catch {
+        body.replaceChildren(
+          h('p', { class: 'lobby-error', role: 'alert' }, 'サーバーに接続できませんでした。通信状況を確認してください。'),
+          button('もう一度試す', () => connect()),
+          h('div', { class: 'screen-footer' }, button('もどる', () => navigate('title'), { variant: 'ghost' })),
+        );
+      }
+    }
 
     // ---------- 入口：名前・部屋を作る・コードで参加 ----------
 
@@ -107,6 +125,7 @@ export const friendLobbyScreen = {
 
     function enterRoom(code, side) {
       joined = { code, side };
+      stopPresence = store.trackPresence(`${roomPath(code)}/players/${side}`);
       unsubscribe = store.subscribe(roomPath(code), (room) => renderRoom(room));
       const beat = () => {
         touch(store, code, side);
@@ -140,6 +159,7 @@ export const friendLobbyScreen = {
       if (room.match?.status === 'playing') {
         navigated = true;
         unsubscribe?.();
+        stopPresence?.();
         clearTimeout(heartbeatId);
         navigate('battle', { session: new FriendSession({ store, code, side, room }) });
         return;
@@ -182,12 +202,13 @@ export const friendLobbyScreen = {
       );
     }
 
-    renderEntry();
+    connect();
 
     return {
       el: view,
       dispose() {
         unsubscribe?.();
+        stopPresence?.();
         clearTimeout(heartbeatId);
         // 対戦に進まずにロビーを離れたら退出する
         if (joined && !navigated) leaveRoom(store, joined.code, joined.side);

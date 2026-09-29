@@ -1,3 +1,5 @@
+import { getClientId } from '../match/identity.js';
+
 // 部屋データの読み書き（docs/SPEC.md §10）。Firebase Realtime Database と同じ考え方の取り決め：
 //   serverNow()                    サーバー時刻（ミリ秒）
 //   get(path)                      → Promise<値 | null>（path 以下をまとめたオブジェクト）
@@ -5,8 +7,10 @@
 //   update(path, fields)           path 直下の複数の項目をまとめて書き換える
 //   createIfAbsent(path, value)    → Promise<boolean>  まだ無ければ作る（部屋コードの重複防止）
 //   subscribe(path, callback)      → 解除関数。path 以下が変わるたびに callback(値)
+//   clientId                       プレイヤー識別（Firebase 版は匿名認証の uid）
+//   trackPresence(playerPath)      → 解除関数。playerPath/connected・lastSeen を接続状態に合わせて更新
 //
-// ここでは通信なしの LocalRoomStore を用意する（Firebase 版は FirebaseRoomStore として後で追加）。
+// 実装：通信なしの LocalRoomStore（このファイル）と、Firebase 版の FirebaseRoomStore（firebaseRoomStore.js）。
 //   - localStorage 版：同じブラウザの別タブ・別 iframe と共有できる（2画面テスト・手元での2人プレイ用）
 //   - Map 版：単体テスト用
 // データは「パス → JSON」で保存し、読むときに組み立てる。
@@ -95,6 +99,21 @@ export class LocalRoomStore {
     return this.#clock();
   }
 
+  /** プレイヤー識別（通信なし版は端末ごとの ID） */
+  get clientId() {
+    return getClientId();
+  }
+
+  /** 同じブラウザ内だけなので、通信の接続状態は常に接続中 */
+  get isLocalOnly() {
+    return true;
+  }
+
+  /** 接続状態の管理（通信なし版では何もしない。切断は lastSeen の途絶で判断する） */
+  trackPresence() {
+    return () => {};
+  }
+
   #read(path) {
     const parts = splitPath(path);
     const keys = this.#backend.keys();
@@ -178,14 +197,27 @@ function structuredCloneSafe(value) {
 let sharedStore = null;
 
 /**
- * アプリで使う部屋データの保存先。
- * Ver.0.2 の Firebase 接続前は LocalRoomStore（同じブラウザの別タブ・iframe の間だけで対戦できる）。
- * Firebase 導入時はここを FirebaseRoomStore に差し替える。
+ * アプリで使う部屋データの保存先を用意する（フレンド対戦を開いたときだけ呼ぶ。CPU戦では呼ばない）。
+ *   - Firebase の設定値があれば FirebaseRoomStore（Firebase SDK はここで初めて読み込む）
+ *   - 設定値が無い、または URL に ?store=local があれば LocalRoomStore（同じブラウザ内だけ）
+ *   - URL に ?latency=300 などがあれば、通信遅延を人工的に入れる（テスト用）
  */
-export function getRoomStore() {
-  sharedStore ??= new LocalRoomStore();
-  return sharedStore;
+export async function loadRoomStore() {
+  if (sharedStore) return sharedStore;
+  const params = new URLSearchParams(globalThis.location?.search ?? '');
+  const { FIREBASE_CONFIG } = await import('./firebaseConfig.js');
+  let store;
+  if (FIREBASE_CONFIG && params.get('store') !== 'local') {
+    const { FirebaseRoomStore } = await import('./firebaseRoomStore.js');
+    store = await FirebaseRoomStore.connect(FIREBASE_CONFIG);
+  } else {
+    store = new LocalRoomStore();
+  }
+  const latency = Number(params.get('latency'));
+  if (latency > 0) {
+    const { DelayedRoomStore } = await import('./delayedRoomStore.js');
+    store = new DelayedRoomStore(store, { latencyMs: latency });
+  }
+  sharedStore = store;
+  return store;
 }
-
-/** 通信なし（同じブラウザ内だけ）の保存先を使っているか */
-export const isLocalOnlyRoomStore = () => getRoomStore() instanceof LocalRoomStore;
