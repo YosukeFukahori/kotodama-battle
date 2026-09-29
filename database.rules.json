@@ -17,7 +17,7 @@
             ".write": "auth != null && data.child('id').val() === auth.uid && newData.child('id').val() === auth.uid"
           },
           "guest": {
-            ".write": "auth != null && ((!data.exists() && newData.child('id').val() === auth.uid && root.child('rooms/' + $code + '/players/host/id').val() !== auth.uid) || (data.child('id').val() === auth.uid && (!newData.exists() || newData.child('id').val() === auth.uid)))"
+            ".write": "auth != null && ((!data.exists() && root.child('rooms/' + $code + '/meta').exists() && newData.child('id').val() === auth.uid && root.child('rooms/' + $code + '/players/host/id').val() !== auth.uid) || (data.child('id').val() === auth.uid && (!newData.exists() || newData.child('id').val() === auth.uid)))"
           },
           "$other": {
             ".validate": false
@@ -34,12 +34,23 @@
         },
         "rounds": {
           "$n": {
-            ".write": "auth != null && root.child('rooms/' + $code + '/players/host/id').val() === auth.uid",
+            "schedule": {
+              ".write": "auth != null && root.child('rooms/' + $code + '/players/host/id').val() === auth.uid"
+            },
+            "prompt": {
+              ".write": "auth != null && root.child('rooms/' + $code + '/players/host/id').val() === auth.uid"
+            },
+            "result": {
+              ".write": "auth != null && root.child('rooms/' + $code + '/players/host/id').val() === auth.uid"
+            },
             "answers": {
               "$side": {
                 ".write": "auth != null && !data.exists() && root.child('rooms/' + $code + '/players/' + $side + '/id').val() === auth.uid",
                 ".validate": "$side === 'host' || $side === 'guest'"
               }
+            },
+            "$other": {
+              ".validate": false
             }
           }
         }

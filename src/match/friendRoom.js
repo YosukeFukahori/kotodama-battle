@@ -109,6 +109,18 @@ export function buildRound(pool, rules, startAt, avoid = null) {
   return { schedule: scheduleRound(startAt, rules.timing, rules.timeLimitMs), prompt };
 }
 
+/**
+ * ラウンドを書き込むための update の項目。
+ * アクセスルールで rounds/{n} 全体には書き込み許可を置かない（置くと answers まで書けてしまう）ため、
+ * schedule と prompt を別々のパスで書く。
+ */
+export function roundFields(n, round) {
+  return {
+    [`rounds/${n}/schedule`]: round.schedule,
+    [`rounds/${n}/prompt`]: round.prompt,
+  };
+}
+
 /** 対戦開始時の状態（battle.js の状態を host / guest で持つ） */
 export function initialMatchState(rules) {
   return {
@@ -129,7 +141,7 @@ export async function startMatch(store, code, { pool }) {
   const rules = room.meta.rules;
   const startAt = store.serverNow() + rules.friend.startDelayMs;
   await store.update(roomPath(code), {
-    'rounds/1': buildRound(pool, rules, startAt),
+    ...roundFields(1, buildRound(pool, rules, startAt)),
     match: { status: 'playing', round: 1, state: initialMatchState(rules), startAt, result: null },
     'meta/status': 'playing',
   });

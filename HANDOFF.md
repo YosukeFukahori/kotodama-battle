@@ -16,7 +16,7 @@
 - 戦績の記録はセッションの責任（画面は storage を触らない）。friend の途中離脱は負けにしない。中止は cancelMatch()（記録なし）
 - 部屋データ rooms/{code}：meta / players / match / rounds/{n}（schedule・prompt・answers・result）。両者は host / guest で保存
 - 時刻はホストが決めたサーバー時刻（schedule・revealAt・nextRoundAt）。各端末は serverNow との差で換算 → 片方の操作で相手の進行は変わらない
-- ホストの裁定は「判定結果＋状態＋次ラウンド」を store.update で一括（途中状態を見せない）
+- ホストの裁定は「判定結果＋状態＋次ラウンド」を store.update で一括（途中状態を見せない）。ラウンドは roundFields() で schedule / prompt を別パスに書く（ルールの都合。rounds/{n} 丸ごとは書けない）
 - 切断：players/{side}/lastSeen を定期更新 → 途絶で接続待ち表示 → 20秒超で match.status=aborted（記録なし）。再読み込みは main.js の resumeFriendMatch で復帰
 - 「やめる」はやめた側の負け（確定）。切断20秒超の中止は記録なし（確定）
 - `?profile=xxx` で端末を分けられる（clientId・戦績キー・参加中の部屋）。2画面テスト用
@@ -24,12 +24,14 @@
 ## 主要ファイル
 - `src/match/`：session.js・cpuSession.js・referee.js・friendRoom.js・friendSession.js・identity.js
 - `src/net/`：roomStore.js（取り決め・LocalRoomStore・loadRoomStore()）、firebase.js（SDK 12.19.0 読み込み・匿名ログイン）、firebaseRoomStore.js、delayedRoomStore.js（?latency= テスト用）、firebaseConfig.js（設定値）
-- `database.rules.json`（アクセスルール。コンソールに貼る）
+- `database.rules.json`（アクセスルール。コンソールに貼る）。rounds/{n} には親の .write を置かず、schedule / prompt / result はホスト、answers/{side} は本人だけ
+- `tests/rulesEval.js`（ルールの簡易評価器。公式エミュレーターの代わり）・`tests/rules.test.js`
 - `src/ui/`：battleScreen.js（表示のみ）・friendLobbyScreen.js・resultScreen.js（mode 別）・recordScreen.js
 - `tests/friend.test.js`（部屋・同期・切断）、`tests/e2e/`（input / cpu / friend / rejoin）
 
 ## 次にやること
 - ユーザーが Firebase コンソールで：プロジェクト作成 → Web アプリ登録 → 匿名認証を有効化 → Realtime Database 作成（asia-southeast1）→ database.rules.json を貼る → 設定値を受け取って src/net/firebaseConfig.js に書く
+- 本物の Firebase で tests/rules.test.js と同じケースを実際の匿名ユーザーで確認する（評価器は近似のため）
 - Firebase 接続で e2e（friend / rejoin / abort）を実行（?store= を付けなければ Firebase を使う。?latencyHost=&latencyGuest= で遅延も足せる）
 - 実機2台で確認 → MOBILE_CHECKLIST にフレンド戦の項目を追加 → push・公開
 

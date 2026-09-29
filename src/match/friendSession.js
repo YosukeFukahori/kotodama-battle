@@ -18,7 +18,7 @@ import { getGameData } from '../dictionary/setup.js';
 import { getStore } from '../storage/storage.js';
 import { BaseSession } from './session.js';
 import { refereeRound, sanitizeAnswer } from './referee.js';
-import { roomPath, otherSide, buildRound, touch } from './friendRoom.js';
+import { roomPath, otherSide, buildRound, roundFields, touch } from './friendRoom.js';
 import { saveCurrentRoom } from './identity.js';
 
 // ---------- host / guest ⇔ 自分視点の読み替え ----------
@@ -395,7 +395,7 @@ export class FriendSession extends BaseSession {
       updates['match/result'] = { ...canonState.result, decidedRound: canonState.round };
       updates['meta/status'] = 'finished';
     } else {
-      updates[`rounds/${n + 1}`] = buildRound(this.#pool, this.#rules, nextRoundAt, round.prompt);
+      Object.assign(updates, roundFields(n + 1, buildRound(this.#pool, this.#rules, nextRoundAt, round.prompt)));
       updates['match/round'] = n + 1;
     }
     await this.#store.update(this.#path, updates);
