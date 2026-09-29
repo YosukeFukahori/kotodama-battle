@@ -15,7 +15,7 @@
 - **CPU戦でレーティングを変動させない。** CPU戦は練習・操作確認・バランス確認用。戦績は `record.cpu` にのみ記録する
 - **成長要素・自分辞書は実装しない。** 完全実力勝負（ステータスなし、両者同HP、ダメージは文字数と速さのみ）
 - **辞書の役割を混ぜない**
-  - 公式辞書（`data/official/`、SudachiDict から `tools/build_dictionary.py` で生成。手で編集しない）＋追加辞書（`data/extra-words.json`）＝ 正誤判定用
+  - 公式辞書（`data/official/`、SudachiDict から `tools/build_dictionary.py` で生成。手で編集しない）＋追加辞書（`data/extra-words.json`、`tools/extra-words/*.txt` から `tools/build_extra_words.py` で生成。手で編集しない）＝ 正誤判定用
   - `data/prompt-pool.json` ＝ 出題と CPU 回答用
   - 辞書にない言葉は無効（審議機能なし）
 - **将来のランダムマッチを壊さない構造にする**

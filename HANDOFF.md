@@ -10,6 +10,7 @@
 - 5：ロビー UI（部屋作成・6桁コード・参加・準備OK）、再読み込みからの自動復帰、2画面の操作テスト
 - 手順6：Firebase 接続完了（プロジェクト kotodama-battle、RTDB asia-southeast1、匿名認証、ルール公開済み）。設定値は src/net/firebaseConfig.js。本物の Firebase で e2e（friend / rejoin / abort / 遅延あり）と実ルールテスト（tests/live/、35件）が通過
 - 手順7：Ver.0.2 公開（README・MOBILE_CHECKLIST をフレンド戦に合わせて更新、全テスト通過後に main へ push → GitHub Pages に公開）
+- 辞書カバー率の強化：追加辞書に 2,833 語（芸能人・作品・キャラ・スポーツ・ブランド・地名・料理・動植物・職業・学校・趣味・現代語・長い語）。元データは tools/extra-words/*.txt、生成は tools/build_extra_words.py（--check で一致確認）。extra-words.json は手で編集しない
 
 ## 重要な設計判断
 - セッションの取り決めとイベント一覧は `src/match/session.js` 冒頭が正本。イベントは常に「自分 = player、相手 = opponent」視点

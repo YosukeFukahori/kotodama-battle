@@ -117,7 +117,7 @@ database.rules.json  Firebase Realtime Database のアクセスルール
 正誤判定には次の2つを使います。
 
 - 公式辞書：[SudachiDict](https://github.com/WorksApplications/SudachiDict)（Works Applications、版 20260723、small + core）から生成（約26.4万語、`data/official/`）
-- 追加辞書：公式辞書にない言葉をゲーム側で補うリスト（`data/extra-words.json`）
+- 追加辞書：公式辞書にない言葉をゲーム側で補うリスト（`data/extra-words.json`、約2,800語。芸能人・作品名・キャラクター・ブランド・地名・料理・現代語など）
 
 出題とCPUの回答には、別に用意した日常語のリスト（`data/prompt-pool.json`、1,025語）を使います。
 
@@ -128,6 +128,15 @@ python3 tools/build_dictionary.py --download
 ```
 
 （元データ約37MBを `.cache/sudachi/` に取得してから `data/official/` を生成します。2回目以降は `--download` なしで可。`data/prompt-pool.json` を変えたときも再生成してください）
+
+追加辞書に言葉を足すとき：`tools/extra-words/` のカテゴリ別ファイル（1行1語。`表記,よみ` またはカタカナ表記のみ）に追記してから、次を実行します。公式辞書にある語とカテゴリ間の重複は自動で除かれます。
+
+```bash
+python3 tools/build_extra_words.py          # data/extra-words.json を生成
+python3 tools/build_extra_words.py --check  # 生成済みのファイルが元データと一致するか確認
+```
+
+（公式辞書を作り直したときも、追加辞書を再生成してください。公式辞書に入った語は追加辞書から外れます）
 
 ## ライセンス
 
