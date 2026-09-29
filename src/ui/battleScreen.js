@@ -116,10 +116,10 @@ export const battleScreen = {
       enterkeyhint: 'send',
       placeholder: 'かなで入力',
       'aria-label': '回答',
-      readonly: true,
+      disabled: true,
     });
     const submitButton = h('button', { type: 'submit', class: 'btn btn--primary answer-submit', disabled: true }, '回答する');
-    const form = h('form', { class: 'answer-form', onSubmit: (e) => { e.preventDefault(); submitPlayerAnswer(); } }, input, submitButton);
+    const form = h('form', { class: 'answer-form is-locked', onSubmit: (e) => { e.preventDefault(); submitPlayerAnswer(); } }, input, submitButton);
 
     const judgePanel = h('section', { class: 'judge', hidden: true, 'aria-live': 'polite' });
     const messageBox = h('p', { class: 'battle-message', role: 'status' });
@@ -227,6 +227,38 @@ export const battleScreen = {
 
     let composing = false;
     let lastCompositionEndAt = -Infinity;
+
+    /** IME の状態を初期化する（前のラウンドや FIGHT! 前の操作の影響を残さない） */
+    function resetComposition() {
+      composing = false;
+      lastCompositionEndAt = -Infinity;
+    }
+
+    /**
+     * 入力欄と回答ボタンの操作可否。
+     * 無効の間は disabled（フォーカスもできない）＋ pointer-events: none（.is-locked）で完全に操作不能にする。
+     * readOnly だとフォーカスはできてしまい、FIGHT! 前にタップされた状態が残って
+     * 「FIGHT! 後に文字が入らない」原因になるため使わない。
+     */
+    function lockAnswerInput() {
+      input.blur();
+      input.disabled = true;
+      form.classList.add('is-locked');
+      resetComposition();
+      updateSubmitState();
+    }
+
+    function unlockAnswerInput() {
+      // フォーカス・IME の状態を一度リセットしてから入力可能にする
+      input.blur();
+      resetComposition();
+      input.disabled = false;
+      form.classList.remove('is-locked');
+      updateSubmitState();
+      // 自動フォーカスはマウス操作の端末だけ（iPhone 等はプログラムからの focus でキーボードが出ず、
+      // かえってフォーカス状態がずれることがあるため、利用者のタップに任せる）
+      if (window.matchMedia?.('(pointer: fine)').matches) input.focus({ preventScroll: true });
+    }
     input.addEventListener('compositionstart', () => { composing = true; });
     input.addEventListener('compositionend', () => {
       composing = false;
@@ -249,10 +281,8 @@ export const battleScreen = {
       if (timeMs >= timeLimitMs) return; // 締め切り処理に任せる
 
       round.answers.player = { status: 'answered', input: value, timeMs };
-      input.readOnly = true;
-      input.blur();
+      lockAnswerInput();
       submitButton.textContent = '回答済み ✓';
-      updateSubmitState();
       renderStatus();
       checkAllAnswered();
     }
@@ -306,8 +336,8 @@ export const battleScreen = {
       clearTimers();
       judgePanel.hidden = true;
       round = null;
+      lockAnswerInput(); // ROUND / READY の間は完全に操作不能
       input.value = '';
-      input.readOnly = true;
       submitButton.textContent = '回答する';
       updateSubmitState();
       statusRow.hidden = true;
@@ -354,10 +384,7 @@ export const battleScreen = {
       statusRow.hidden = false;
       renderStatus();
       phase = 'answering';
-      input.readOnly = false;
-      // Android などではキーボードが開く。iOS は利用者の操作なしでは開かないので、入力欄をタップしてもらう
-      input.focus({ preventScroll: true });
-      updateSubmitState();
+      unlockAnswerInput(); // この瞬間から入力可能
 
       showBanner('FIGHT!', 'fight');
       later(hideBanner, schedule.fightEndAt - schedule.fightAt);
@@ -395,9 +422,7 @@ export const battleScreen = {
         round.answers[side] ??= { status: 'timeout' };
       }
       renderTimer(round.answers.player.status === 'answered' && round.answers.opponent.status === 'answered' ? elapsed : timeLimitMs);
-      input.readOnly = true;
-      input.blur();
-      updateSubmitState();
+      lockAnswerInput();
       renderStatus();
       runJudgement();
     }

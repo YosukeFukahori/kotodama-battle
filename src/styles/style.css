@@ -571,7 +571,15 @@ h1:focus, h2:focus {
   font-weight: 700;
 }
 
-.answer-input[readonly] {
+/* FIGHT! 前・回答後は完全に操作不能（タップしてもフォーカスしない） */
+.answer-form.is-locked .answer-input,
+.answer-form.is-locked .answer-submit {
+  pointer-events: none;
+}
+
+.answer-input:disabled {
+  opacity: 1;
+  -webkit-text-fill-color: var(--text-muted);
   background: var(--surface-muted);
   color: var(--text-muted);
 }

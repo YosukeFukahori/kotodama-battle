@@ -62,7 +62,9 @@ python3 tools/serve.py
 
 ブラウザでローカルサーバー起動後に http://localhost:8000/tests/ を開くと、全テストが実行されます。
 
-Node.js 14 以上があればコマンドでも実行できます。
+操作テスト（実際のアプリを動かして、FIGHT! 前後の入力の制御などを確認）は http://localhost:8000/tests/e2e/ を開くと実行されます。
+
+Node.js 14 以上があれば、ロジックのテストはコマンドでも実行できます。
 
 ```bash
 node tests/run.js
